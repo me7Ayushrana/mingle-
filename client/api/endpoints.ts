@@ -1,0 +1,47 @@
+export const endpoints = {
+  auth: {
+    register: '/auth/register',
+    login: '/auth/login',
+    refresh: '/auth/refresh',
+    logout: '/auth/logout',
+    me: '/auth/me',
+  },
+  users: {
+    active: '/users/active',
+    suggested: '/users/suggested',
+    search: '/users/search',
+    profile: (id: string) => `/users/${id}`,
+    updateProfile: '/users/me',
+  },
+  moments: {
+    list: '/moments',
+    create: '/moments',
+    like: (id: string) => `/moments/${id}/like`,
+    comment: (id: string) => `/moments/${id}/comments`,
+    detail: (id: string) => `/moments/${id}`,
+  },
+  chats: {
+    list: '/chats',
+    messages: (id: string) => `/chats/${id}/messages`,
+    send: (id: string) => `/chats/${id}/messages`,
+  },
+  groups: {
+    list: '/groups',
+    create: '/groups',
+    invitePreview: (code: string) => `/groups/invite/${code}`,
+    join: (code: string) => `/groups/invite/${code}/join`,
+    addMember: (id: string) => `/groups/${id}/add-member`,
+    getInvites: '/groups/invites',
+    acceptInvite: (id: string) => `/groups/invites/${id}/accept`,
+    declineInvite: (id: string) => `/groups/invites/${id}/decline`,
+    messages: (id: string) => `/groups/${id}/messages`,
+    info: (id: string) => `/groups/${id}/info`,
+    delete: (id: string) => `/groups/${id}`,
+    leave: (id: string) => `/groups/${id}/leave`,
+  },
+  moderation: {
+    report: '/moderation/report',
+    actions: '/moderation/actions',
+  },
+  onboarding: '/onboarding/complete',
+} as const;
