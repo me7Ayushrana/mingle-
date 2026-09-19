@@ -155,10 +155,84 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response): Promise
         reputation: user.reputation,
         createdAt: user.createdAt,
         isOnboarded: user.isOnboarded,
-      }
+      },
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /auth/google
+router.post('/google', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, name, token } = req.body;
+
+    if (!email && !token) {
+      res.status(400).json({ success: false, message: 'Google email or token required' });
+      return;
+    }
+
+    let userEmail = email;
+    let userName = name;
+
+    // If token is provided, decode JWT payload from Google credential
+    if (token && !userEmail) {
+      try {
+        const decoded: any = jwt.decode(token);
+        if (decoded && decoded.email) {
+          userEmail = decoded.email;
+          userName = userName || decoded.name;
+        }
+      } catch {
+        // Continue with provided email
+      }
+    }
+
+    if (!userEmail) {
+      res.status(400).json({ success: false, message: 'Unable to extract email from Google auth' });
+      return;
+    }
+
+    let user = await User.findOne({ email: userEmail });
+
+    if (!user) {
+      // Generate a cool anonymous alias for new Google user
+      const adjectives = ['Cosmic', 'Velvet', 'Silent', 'Mystic', 'Neon', 'Echo', 'Solar', 'Shadow', 'Luna', 'Zen'];
+      const nouns = ['Panda', 'Nomad', 'Voyager', 'Phoenix', 'Whisper', 'Falcon', 'Ranger', 'Starlight', 'Drifter', 'Wave'];
+      const randomAlias = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+      const avatarNum = Math.floor(Math.random() * 12) + 1;
+
+      user = new User({
+        email: userEmail,
+        alias: randomAlias,
+        avatarId: `avatar-${avatarNum}`,
+        username: ((userName || userEmail.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(1000 + Math.random() * 9000)),
+        isOnboarded: false,
+      });
+      await user.save();
+    }
+
+    const tokens = generateTokens(user.id);
+
+    res.json({
+      success: true,
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        alias: user.alias,
+        avatarId: user.avatarId,
+        mood: user.mood,
+        needs: user.needs,
+        reputation: user.reputation,
+        createdAt: user.createdAt,
+        isOnboarded: user.isOnboarded,
+      }
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ success: false, message: 'Server error during Google authentication' });
   }
 });
 

@@ -9,6 +9,7 @@ export interface AuthTokens {
 
 export interface AnonymousProfile {
   id: string;
+  email?: string;
   username: string;
   alias: string;
   avatarId: string;

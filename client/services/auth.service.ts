@@ -73,6 +73,23 @@ export const authService = {
     return data;
   },
 
+  async googleAuth(payload: { email?: string; name?: string; token?: string }): Promise<AuthTokens & { user: AnonymousProfile }> {
+    if (env.useMockApi) {
+      const tokens: AuthTokens = {
+        accessToken: 'mock-google-access-token',
+        refreshToken: 'mock-google-refresh-token',
+        expiresAt: Date.now() + 3600000,
+      };
+      await secureStorage.setToken(tokens.accessToken);
+      await secureStorage.setRefreshToken(tokens.refreshToken);
+      return delay({ ...tokens, user: { ...mockProfile, email: payload.email || 'user@gmail.com', isOnboarded: true } });
+    }
+    const { data } = await apiClient.post(endpoints.auth.google, payload);
+    await secureStorage.setToken(data.accessToken);
+    await secureStorage.setRefreshToken(data.refreshToken);
+    return data;
+  },
+
   async getMe(): Promise<AnonymousProfile> {
     if (env.useMockApi) {
       return delay(mockProfile);

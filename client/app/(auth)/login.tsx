@@ -22,6 +22,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { GoogleButton } from '@/components/ui/GoogleButton';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -156,6 +157,14 @@ export default function LoginScreen() {
                 </>
               </Pressable>
 
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <GoogleButton label="Continue with Google" />
+
               <Pressable onPress={() => router.push(Routes.auth.register)}>
                 <Text style={styles.switchText}>
                   Don&apos;t have an account? <Text style={styles.linkText}>Create one</Text>
@@ -267,5 +276,22 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.primary,
     fontWeight: '700',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  dividerText: {
+    paddingHorizontal: spacing.md,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    fontWeight: '600',
   },
 });

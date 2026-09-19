@@ -22,6 +22,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { authService } from '@/services/auth.service';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { GoogleButton } from '@/components/ui/GoogleButton';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -189,6 +190,14 @@ export default function RegisterScreen() {
                 </>
               </Pressable>
 
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <GoogleButton label="Sign up with Google" />
+
               <Pressable onPress={() => router.push(Routes.auth.login)}>
                 <Text style={styles.switchText}>
                   Already have an account? <Text style={styles.linkText}>Log In</Text>
@@ -317,5 +326,22 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 13,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.xs,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  dividerText: {
+    paddingHorizontal: spacing.md,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    fontWeight: '600',
   },
 });
