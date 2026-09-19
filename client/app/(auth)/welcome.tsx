@@ -89,12 +89,12 @@ export default function WelcomeScreen() {
   );
 }
 
-const CARD_W = width * 0.4;
-const CARD_H = CARD_W * 1.25;
+const CARD_W = Math.min(width * 0.38, 175);
+const CARD_H = CARD_W * 1.35;
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
+  mainContainer: { flex: 1, backgroundColor: '#000', alignItems: 'center' },
+  safeArea: { flex: 1, width: '100%', maxWidth: 500 },
   container: {
     flex: 1,
     paddingHorizontal: spacing['2xl'],
@@ -103,20 +103,22 @@ const styles = StyleSheet.create({
   },
 
   // ── Hero ──────────────────────────────────────────────
-  heroArea: { flex: 1 },
-  logoRow: { marginTop: spacing['2xl'] },
+  heroArea: { flex: 1, justifyContent: 'space-between' },
+  logoRow: { marginTop: spacing.xl, marginBottom: spacing.xs, zIndex: 10 },
   logo: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: colors.primary,
     letterSpacing: -1,
   },
   illustrationArea: {
     flex: 1,
+    minHeight: 220,
+    maxHeight: 290,
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
   },
   card: {
     position: 'absolute',
@@ -132,21 +134,21 @@ const styles = StyleSheet.create({
   },
   cardImage: { flex: 1, width: '100%', height: '100%', resizeMode: 'cover' },
   cardGradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
-  leftCard: { left: '8%', transform: [{ rotate: '-12deg' }], zIndex: 1 },
-  rightCard: { right: '8%', transform: [{ rotate: '10deg' }], zIndex: 2, marginTop: 30 },
+  leftCard: { left: '10%', transform: [{ rotate: '-10deg' }], zIndex: 1 },
+  rightCard: { right: '10%', transform: [{ rotate: '10deg' }], zIndex: 2, marginTop: 24 },
 
   title: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: '800',
     color: colors.white,
-    lineHeight: 42,
+    lineHeight: 38,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: spacing.md,
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: spacing.sm,
   },
 
   // ── Feature pills ─────────────────────────────────────
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   pill: {
     flexDirection: 'row',
@@ -163,35 +165,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   pillText: {
     fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.85)',
   },
 
   // ── Actions ───────────────────────────────────────────
-  actions: { gap: spacing.lg },
+  actions: { gap: spacing.md, marginTop: spacing.md },
   primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 60,
-    borderRadius: 30,
+    height: 56,
+    borderRadius: 28,
     overflow: 'hidden',
   },
   primaryBtnText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.white,
   },
   secondaryBtn: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   secondaryBtnText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
   },
   linkText: {
     color: colors.primary,
@@ -199,9 +203,9 @@ const styles = StyleSheet.create({
   },
   tos: {
     textAlign: 'center',
-    color: 'rgba(255,255,255,0.25)',
-    fontSize: 12,
-    lineHeight: 18,
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 11,
+    lineHeight: 16,
     paddingHorizontal: spacing.xl,
   },
 });

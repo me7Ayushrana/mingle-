@@ -170,9 +170,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
-  flex: { flex: 1 },
+  mainContainer: { flex: 1, backgroundColor: '#000', alignItems: 'center' },
+  safeArea: { flex: 1, width: '100%', maxWidth: 500 },
+  flex: { flex: 1, width: '100%' },
   header: {
     paddingHorizontal: spacing['2xl'],
     paddingVertical: spacing.md,

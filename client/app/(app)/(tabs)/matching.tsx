@@ -307,16 +307,19 @@ export default function MatchingScreen() {
   );
 }
 
-const CARD_WIDTH = width * 0.45;
-const CARD_HEIGHT = CARD_WIDTH * 1.3;
+const CARD_WIDTH = Math.min(width * 0.4, 175);
+const CARD_HEIGHT = CARD_WIDTH * 1.35;
 
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: 500,
   },
   container: {
     flex: 1,
@@ -328,7 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing['2xl'],
+    marginTop: spacing.xl,
     width: '100%',
   },
   headerLeft: {

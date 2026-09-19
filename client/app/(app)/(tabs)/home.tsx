@@ -459,8 +459,8 @@ export default function HomeScreen() {
 // Styles
 // ═══════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#000' },
-  safeArea: { flex: 1 },
+  mainContainer: { flex: 1, backgroundColor: '#000', alignItems: 'center' },
+  safeArea: { flex: 1, width: '100%', maxWidth: 500 },
   container: { paddingBottom: spacing['4xl'] * 2 },
 
   // Header

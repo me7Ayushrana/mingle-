@@ -408,9 +408,12 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: '#000',
+    alignItems: 'center',
   },
   safeArea: {
     flex: 1,
+    width: '100%',
+    maxWidth: 500,
   },
   container: {
     paddingHorizontal: spacing['2xl'],
