@@ -42,16 +42,31 @@ app.get('/health', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// API Routes
+// API Routes (Support both / and /api prefixes)
 // ---------------------------------------------------------------------------
 app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
+
 app.use('/users', usersRoutes);
+app.use('/api/users', usersRoutes);
+
 app.use('/moments', momentsRoutes);
+app.use('/api/moments', momentsRoutes);
+
 app.use('/chats', chatsRoutes);
+app.use('/api/chats', chatsRoutes);
+
 app.use('/groups', groupsRoutes);
+app.use('/api/groups', groupsRoutes);
+
 app.use('/moderation', moderationRoutes);
+app.use('/api/moderation', moderationRoutes);
+
 app.use('/onboarding', onboardingRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+
 app.use('/voice', voiceRoutes);
+app.use('/api/voice', voiceRoutes);
 
 // ---------------------------------------------------------------------------
 // Error handling
