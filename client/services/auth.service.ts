@@ -73,7 +73,7 @@ export const authService = {
     return data;
   },
 
-  async googleAuth(payload: { email?: string; name?: string; token?: string }): Promise<AuthTokens & { user: AnonymousProfile }> {
+  async googleAuth(payload: { email?: string; name?: string; picture?: string; googleId?: string; token?: string }): Promise<AuthTokens & { user: AnonymousProfile }> {
     if (env.useMockApi) {
       const tokens: AuthTokens = {
         accessToken: 'mock-google-access-token',
