@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { StyleSheet, Pressable, View, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -25,16 +25,35 @@ declare global {
             scope: string;
             callback: (response: { access_token?: string; error?: any }) => void;
           }) => {
-            requestAccessToken: () => void;
+            requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
           };
-        };
-        id?: {
-          initialize: (config: any) => void;
-          prompt: () => void;
         };
       };
     };
   }
+}
+
+function loadGoogleScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('google-gsi-client');
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', (e) => reject(e));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-client';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = (e) => reject(e);
+    document.head.appendChild(script);
+  });
 }
 
 export function GoogleButton({
@@ -46,84 +65,83 @@ export function GoogleButton({
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
 
-  const googleClientId = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  const googleClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
+    '983830716344-bfp591selgrt6r9ln2klutp3c0ov8dfn.apps.googleusercontent.com';
 
   const handleGoogleSignIn = async () => {
     if (loading) return;
     setLoading(true);
 
     try {
-      // ── Option 1: Web with Official Google Identity Services ──────────
-      if (
-        Platform.OS === 'web' &&
-        typeof window !== 'undefined' &&
-        window.google?.accounts?.oauth2 &&
-        googleClientId
-      ) {
-        await new Promise<void>((resolve, reject) => {
-          try {
-            const client = window.google!.accounts.oauth2.initTokenClient({
-              client_id: googleClientId,
-              scope: 'email profile openid',
-              callback: async (tokenResponse) => {
-                if (tokenResponse.error) {
-                  reject(new Error(tokenResponse.error));
-                  return;
-                }
-                if (tokenResponse.access_token) {
-                  try {
-                    // Fetch profile info from Google API
-                    const userInfoRes = await fetch(
-                      'https://www.googleapis.com/oauth2/v3/userinfo',
-                      {
-                        headers: {
-                          Authorization: `Bearer ${tokenResponse.access_token}`,
-                        },
-                      }
-                    );
-                    const googleProfile = await userInfoRes.json();
-                    
-                    const response = await authService.googleAuth({
-                      email: googleProfile.email,
-                      name: googleProfile.name,
-                      picture: googleProfile.picture,
-                      token: tokenResponse.access_token,
-                    });
-
-                    setUser(response.user);
-                    if (onSuccess) onSuccess();
-                    else {
-                      if (response.user.isOnboarded) {
-                        router.replace(Routes.app.home);
-                      } else {
-                        router.replace(Routes.onboarding.profileDetails);
-                      }
-                    }
-                    resolve();
-                  } catch (err) {
-                    reject(err);
-                  }
-                }
-              },
-            });
-            client.requestAccessToken();
-          } catch (initErr) {
-            reject(initErr);
-          }
-        });
-        return;
-      }
-
-      // ── Option 2: Universal Fallback Sign-In ────────────────────────
-      let emailInput: string | null = null;
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        emailInput = window.prompt(
-          'Sign in with Google\nEnter your Google email address:',
-          'user@gmail.com'
-        );
-      } else {
-        emailInput = 'user@gmail.com';
+        // Ensure Google SDK is loaded
+        await loadGoogleScript();
+
+        if (window.google?.accounts?.oauth2 && googleClientId) {
+          await new Promise<void>((resolve, reject) => {
+            try {
+              const client = window.google!.accounts.oauth2.initTokenClient({
+                client_id: googleClientId,
+                scope: 'email profile openid',
+                callback: async (tokenResponse) => {
+                  if (tokenResponse.error) {
+                    reject(new Error(tokenResponse.error));
+                    return;
+                  }
+                  if (tokenResponse.access_token) {
+                    try {
+                      // Fetch verified user profile directly from Google
+                      const userInfoRes = await fetch(
+                        'https://www.googleapis.com/oauth2/v3/userinfo',
+                        {
+                          headers: {
+                            Authorization: `Bearer ${tokenResponse.access_token}`,
+                          },
+                        }
+                      );
+                      const googleProfile = await userInfoRes.json();
+
+                      const response = await authService.googleAuth({
+                        email: googleProfile.email,
+                        name: googleProfile.name,
+                        picture: googleProfile.picture,
+                        googleId: googleProfile.sub,
+                        token: tokenResponse.access_token,
+                      });
+
+                      setUser(response.user);
+                      if (onSuccess) onSuccess();
+                      else {
+                        if (response.user.isOnboarded) {
+                          router.replace(Routes.app.home);
+                        } else {
+                          router.replace(Routes.onboarding.profileDetails);
+                        }
+                      }
+                      resolve();
+                    } catch (err) {
+                      reject(err);
+                    }
+                  }
+                },
+              });
+
+              // Request access token with prompt to select Google account directly
+              client.requestAccessToken({ prompt: 'select_account' });
+            } catch (initErr) {
+              reject(initErr);
+            }
+          });
+          return;
+        }
       }
+
+      // Universal fallback if outside web environment
+      const emailInput =
+        Platform.OS === 'web' && typeof window !== 'undefined'
+          ? window.prompt('Sign in with Google\nEnter your Google email address:', 'user@gmail.com')
+          : 'user@gmail.com';
 
       if (!emailInput || !emailInput.trim()) {
         setLoading(false);
