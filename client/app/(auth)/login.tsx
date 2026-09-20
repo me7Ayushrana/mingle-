@@ -53,12 +53,29 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.error('Login failed:', error);
+      if (
+        (error.response?.data?.message === 'Invalid credentials' ||
+          error.response?.data?.message === 'User not found') &&
+        data.identifier.includes('@')
+      ) {
+        try {
+          const regRes = await authService.register({
+            email: data.identifier,
+            password: data.password,
+          });
+          setUser(regRes.user);
+          router.replace(Routes.onboarding.profileDetails);
+          return;
+        } catch {
+          // Keep original error
+        }
+      }
       setError('root.serverError', {
         type: 'server',
         message:
           error.response?.data?.message ||
           error.message ||
-          'An unexpected error occurred. Please try again.',
+          'Invalid credentials. Please verify your email/username and password.',
       });
     }
   });

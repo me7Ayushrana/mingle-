@@ -49,9 +49,34 @@ export default function RegisterScreen() {
         password: data.password,
       });
       setUser(response.user);
-      router.replace(Routes.onboarding.profileDetails);
+      if (response.user.isOnboarded) {
+        router.replace(Routes.app.home);
+      } else {
+        router.replace(Routes.onboarding.profileDetails);
+      }
     } catch (error: any) {
       console.error('Registration failed:', error);
+      if (error.response?.data?.message === 'User already exists') {
+        try {
+          const loginRes = await authService.login({
+            identifier: data.email,
+            password: data.password,
+          });
+          setUser(loginRes.user);
+          if (loginRes.user.isOnboarded) {
+            router.replace(Routes.app.home);
+          } else {
+            router.replace(Routes.onboarding.profileDetails);
+          }
+          return;
+        } catch {
+          setError('root.serverError', {
+            type: 'server',
+            message: 'User already exists. Please log in or verify your password.',
+          });
+          return;
+        }
+      }
       setError('root.serverError', {
         type: 'server',
         message:
