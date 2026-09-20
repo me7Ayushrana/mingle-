@@ -43,6 +43,46 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   hydrate: async () => {
     try {
+      // 1. Check if returning from Google OAuth redirect (hash contains access_token)
+      if (
+        typeof window !== 'undefined' &&
+        window.location.hash &&
+        window.location.hash.includes('access_token=')
+      ) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {}
+
+          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const googleProfile = await userInfoRes.json();
+          const email = googleProfile.email || 'user@gmail.com';
+          const name = googleProfile.name || email.split('@')[0];
+
+          const response = await authService.googleAuth({
+            email,
+            name,
+            picture: googleProfile.picture,
+            googleId: googleProfile.sub,
+            token: accessToken,
+          });
+
+          set({
+            user: response.user,
+            token: response.accessToken,
+            isAuthenticated: true,
+            isOnboarded: response.user.isOnboarded ?? false,
+            isLoading: false,
+          });
+          return;
+        }
+      }
+
       const token = await secureStorage.getToken();
 
       if (!token) {

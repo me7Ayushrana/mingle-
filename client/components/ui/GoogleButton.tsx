@@ -194,59 +194,23 @@ export function GoogleButton({
       });
   };
 
-  const handleGoogleSignIn = async () => {
-    if (loading || isHandlingAuth.current) return;
+  const handleGoogleSignIn = () => {
+    if (loading) return;
     setLoading(true);
-    isHandlingAuth.current = true;
 
-    // Safety timeout: reset button state after 8s so user is NEVER permanently stuck on a spinner
-    const safetyTimer = setTimeout(() => {
-      setLoading(false);
-      isHandlingAuth.current = false;
-    }, 8000);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const redirectUri = window.location.origin;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        googleClientId
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
 
-    try {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        try {
-          await loadGoogleScript();
-        } catch {}
-
-        if (window.google?.accounts?.oauth2 && googleClientId) {
-          const client = window.google.accounts.oauth2.initTokenClient({
-            client_id: googleClientId,
-            scope: 'email profile openid',
-            error_callback: (_err: any) => {
-              clearTimeout(safetyTimer);
-              setLoading(false);
-              isHandlingAuth.current = false;
-              directOAuthRedirect();
-            },
-            callback: async (tokenResponse) => {
-              clearTimeout(safetyTimer);
-              if (tokenResponse.error) {
-                setLoading(false);
-                isHandlingAuth.current = false;
-                directOAuthRedirect();
-                return;
-              }
-              if (tokenResponse.access_token) {
-                await handleAuthSuccess(tokenResponse.access_token);
-              }
-            },
-          });
-
-          client.requestAccessToken({ prompt: 'select_account' });
-          return;
-        }
-      }
-
-      clearTimeout(safetyTimer);
-      directOAuthRedirect();
-    } catch (err: any) {
-      clearTimeout(safetyTimer);
-      console.error('Google Sign-In init failed:', err);
-      directOAuthRedirect();
+      window.location.assign(authUrl);
+      return;
     }
+
+    directOAuthRedirect();
   };
 
   return (
