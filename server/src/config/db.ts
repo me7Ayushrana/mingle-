@@ -7,7 +7,9 @@ export const connectDB = async () => {
       console.warn('⚠️  DATABASE_URL is not defined in env. Skipping MongoDB connection.');
       return;
     }
-    await mongoose.connect(config.databaseUrl);
+    await mongoose.connect(config.databaseUrl, {
+      serverSelectionTimeoutMS: 8000,
+    });
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
