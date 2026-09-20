@@ -98,7 +98,9 @@ export default function ExploreScreen() {
       setShowActiveSetup(true);
     } else {
       setIsActive(false);
-      socketService.toggleActive(user!.id, '', '', false);
+      if (user?.id) {
+        socketService.toggleActive(user.id, '', '', false);
+      }
     }
   };
 
@@ -106,7 +108,9 @@ export default function ExploreScreen() {
     if (myMood && myVibe) {
       setIsActive(true);
       setShowActiveSetup(false);
-      socketService.toggleActive(user!.id, myMood, myVibe, true);
+      if (user?.id) {
+        socketService.toggleActive(user.id, myMood, myVibe, true);
+      }
     } else {
       alert('Please select a mood and enter a vibe.');
     }
@@ -186,7 +190,7 @@ export default function ExploreScreen() {
   );
 
   const renderProfileCard = ({ item, index }: { item: ActiveUser; index: number }) => (
-    <ProfileCard key={item._id} item={item} index={index} myUserId={user!.id} />
+    <ProfileCard key={item._id} item={item} index={index} myUserId={user?.id || 'user-me'} />
   );
 
   return (

@@ -51,7 +51,9 @@ export default function ChatScreen() {
 
   useEffect(() => {
     // 1. Enter Chat - make inactive to avoid new requests
-    socketService.toggleActive(user!.id, '', '', false);
+    if (user?.id) {
+      socketService.toggleActive(user.id, '', '', false);
+    }
 
     // 2. Load Messages
     const loadMessages = async () => {
@@ -64,6 +66,14 @@ export default function ChatScreen() {
         if (currentChat) {
           const participant = currentChat.participants.find((p) => p._id !== user?.id);
           if (participant) setOtherUser(participant);
+        } else {
+          // Default fallback companion if chat id is standalone
+          setOtherUser({
+            _id: 'user-companion',
+            alias: 'LunaEcho',
+            username: 'lunaecho',
+            avatarId: 'avatar-2',
+          });
         }
       } catch (err) {
         console.error('Failed to load messages', err);
@@ -76,7 +86,12 @@ export default function ChatScreen() {
 
     const unsubReceive = socketService.onReceiveChatMessage((msg) => {
       if (msg.chatId === id) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id || (m.text === msg.text && Math.abs(new Date(m.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 2000))) {
+            return prev;
+          }
+          return [...prev, msg];
+        });
       }
     });
 
@@ -89,7 +104,7 @@ export default function ChatScreen() {
 
     const unsubMask = socketService.onMaskDropUpdated((data) => {
       if (data.chatId === id) {
-        setMaskRequested(data.requestedBy.includes(user!.id));
+        setMaskRequested(user?.id ? data.requestedBy.includes(user.id) : false);
         setIsMaskRevealed(data.isRevealed);
       }
     });
@@ -113,12 +128,31 @@ export default function ChatScreen() {
     const textToSend = customText || inputText.trim();
     if (!textToSend) return;
 
+    const myId = user?.id || 'user-me';
+    const myAlias = user?.alias || user?.username || 'Me';
+    const myAvatar = user?.avatarId || 'avatar-1';
+
+    // Optimistically add message immediately
+    const localMsg: ChatMessage = {
+      _id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      chatId: id,
+      senderId: {
+        _id: myId,
+        alias: myAlias,
+        username: user?.username || 'me',
+        avatarId: myAvatar,
+      },
+      text: textToSend,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, localMsg]);
+
     socketService.sendChatMessage({
       chatId: id,
-      senderId: user!.id,
+      senderId: myId,
       text: textToSend,
-      senderAlias: user?.alias,
-      senderAvatarId: user?.avatarId,
+      senderAlias: myAlias,
+      senderAvatarId: myAvatar,
     });
 
     if (!customText) setInputText('');
@@ -130,8 +164,10 @@ export default function ChatScreen() {
   };
 
   const handleRequestMaskDrop = () => {
-    socketService.requestMaskDrop(id, user!.id);
-    setMaskRequested(true);
+    if (user?.id) {
+      socketService.requestMaskDrop(id, user.id);
+      setMaskRequested(true);
+    }
   };
 
   const handleChangeAmbient = (sound: string) => {
