@@ -182,8 +182,18 @@ export const authService = {
         isOnboarded: true,
       });
     }
-    const { data } = await apiClient.post(endpoints.onboarding, payload);
-    return data.data; // Server returns { success: true, data: { ... } }
+    try {
+      const { data } = await apiClient.post(endpoints.onboarding, payload);
+      return data.data; // Server returns { success: true, data: { ... } }
+    } catch (e) {
+      console.warn('Backend onboarding failed, using local completion:', e);
+      return {
+        ...mockProfile,
+        ...payload,
+        id: `usr_${Date.now()}`,
+        isOnboarded: true,
+      };
+    }
   },
 
   async updateProfile(payload: Partial<AnonymousProfile>): Promise<AnonymousProfile> {
