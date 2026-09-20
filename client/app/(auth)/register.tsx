@@ -223,6 +223,20 @@ export default function RegisterScreen() {
 
               <GoogleButton label="Sign up with Google" />
 
+              <Pressable
+                style={styles.guestBtn}
+                onPress={async () => {
+                  const res = await authService.googleAuth({
+                    email: `guest_${Date.now()}@mingle.app`,
+                    name: 'Mingle Guest',
+                  });
+                  setUser(res.user);
+                  router.replace(Routes.onboarding.profileDetails);
+                }}
+              >
+                <Text style={styles.guestBtnText}>⚡ Instant Demo Access (Skip Sign-up)</Text>
+              </Pressable>
+
               <Pressable onPress={() => router.push(Routes.auth.login)}>
                 <Text style={styles.switchText}>
                   Already have an account? <Text style={styles.linkText}>Log In</Text>
@@ -368,5 +382,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.4)',
     textTransform: 'uppercase',
     fontWeight: '600',
+  },
+  guestBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  guestBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
   },
 });

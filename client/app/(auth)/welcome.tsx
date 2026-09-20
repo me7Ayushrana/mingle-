@@ -8,6 +8,8 @@ import { Text, Heading } from '@/components/ui/Text';
 import { Routes } from '@/constants/routes';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
+import { authService } from '@/services/auth.service';
+import { useAuthStore } from '@/store/auth.store';
 
 const { width } = Dimensions.get('window');
 
@@ -76,6 +78,20 @@ export default function WelcomeScreen() {
 
             <Pressable style={styles.secondaryBtn} onPress={() => router.push(Routes.auth.login)}>
               <Text style={styles.secondaryBtnText}>Already have an account? <Text style={styles.linkText}>Log In</Text></Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.guestBtn}
+              onPress={async () => {
+                const res = await authService.googleAuth({
+                  email: `guest_${Date.now()}@mingle.app`,
+                  name: 'Mingle Guest',
+                });
+                useAuthStore.getState().setUser(res.user);
+                router.replace(Routes.onboarding.profileDetails);
+              }}
+            >
+              <Text style={styles.guestBtnText}>✨ Instant Guest Demo Access</Text>
             </Pressable>
 
             <Text style={styles.tos}>
@@ -200,6 +216,19 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.primary,
     fontWeight: '700',
+  },
+  guestBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  guestBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
   },
   tos: {
     textAlign: 'center',
