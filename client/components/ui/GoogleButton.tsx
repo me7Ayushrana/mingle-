@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, Pressable, View, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -43,7 +43,6 @@ function loadGoogleScript(): Promise<void> {
     if (existing) {
       existing.addEventListener('load', () => resolve());
       existing.addEventListener('error', (e) => reject(e));
-      // In case it already loaded before event listener attached
       if (window.google?.accounts?.oauth2) resolve();
       return;
     }
@@ -73,146 +72,180 @@ export function GoogleButton({
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
     '983830716344-bfp591selgrt6r9ln2klutp3c0ov8dfn.apps.googleusercontent.com';
 
+  const handleAuthSuccess = useCallback(
+    async (accessToken: string) => {
+      setLoading(true);
+      isHandlingAuth.current = true;
+      try {
+        // Fetch verified user profile directly from Google
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        const googleProfile = await userInfoRes.json();
+
+        const email = googleProfile.email || 'user@gmail.com';
+        const name = googleProfile.name || email.split('@')[0];
+
+        const response = await authService.googleAuth({
+          email,
+          name,
+          picture: googleProfile.picture,
+          googleId: googleProfile.sub,
+          token: accessToken,
+        });
+
+        setUser(response.user);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          if (response.user.isOnboarded) {
+            router.replace(Routes.app.home);
+          } else {
+            router.replace(Routes.onboarding.profileDetails);
+          }
+        }
+      } catch (err: any) {
+        console.error('Google profile / backend auth error:', err);
+        const msg = err.response?.data?.message || err.message || 'Google Sign-In failed';
+        if (onError) {
+          onError(err);
+        } else {
+          Alert.alert('Google Sign-In', msg);
+        }
+      } finally {
+        setLoading(false);
+        isHandlingAuth.current = false;
+      }
+    },
+    [setUser, onSuccess, onError, router]
+  );
+
+  // Check on mount if returning from a full-page OAuth redirect (hash contains #access_token=...)
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       loadGoogleScript().catch(() => {});
+
+      if (window.location.hash && window.location.hash.includes('access_token=')) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const token = params.get('access_token');
+        if (token) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname);
+          } catch {}
+          handleAuthSuccess(token);
+        }
+      }
     }
-  }, []);
+  }, [handleAuthSuccess]);
+
+  const directOAuthRedirect = () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const redirectUri = window.location.origin + window.location.pathname;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(
+        googleClientId
+      )}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&response_type=token&scope=email%20profile%20openid&prompt=select_account`;
+      window.location.href = authUrl;
+      return;
+    }
+
+    // Direct fallback for native / offline test
+    const emailInput = window.prompt(
+      'Sign in with Google\nEnter your Google email address:',
+      'user@gmail.com'
+    );
+    if (!emailInput || !emailInput.trim()) {
+      setLoading(false);
+      isHandlingAuth.current = false;
+      return;
+    }
+
+    const email = emailInput.trim();
+    const name = email.split('@')[0];
+    authService
+      .googleAuth({
+        email,
+        name,
+        token: `google_token_${Date.now()}`,
+      })
+      .then((response) => {
+        setUser(response.user);
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          if (response.user.isOnboarded) {
+            router.replace(Routes.app.home);
+          } else {
+            router.replace(Routes.onboarding.profileDetails);
+          }
+        }
+      })
+      .catch((err) => {
+        const msg = err.response?.data?.message || err.message || 'Google Sign-In failed';
+        Alert.alert('Google Sign-In', msg);
+      })
+      .finally(() => {
+        setLoading(false);
+        isHandlingAuth.current = false;
+      });
+  };
 
   const handleGoogleSignIn = async () => {
     if (loading || isHandlingAuth.current) return;
     setLoading(true);
     isHandlingAuth.current = true;
 
-    // Safety timeout to reset loading state if user closes popup without selecting
+    // Safety timeout: reset button state after 8s so user is NEVER permanently stuck on a spinner
     const safetyTimer = setTimeout(() => {
       setLoading(false);
       isHandlingAuth.current = false;
-    }, 45000);
+    }, 8000);
 
     try {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         try {
           await loadGoogleScript();
-        } catch {
-          // Continue to next check
-        }
+        } catch {}
 
         if (window.google?.accounts?.oauth2 && googleClientId) {
-          await new Promise<void>((resolve, reject) => {
-            try {
-              const client = window.google!.accounts.oauth2.initTokenClient({
-                client_id: googleClientId,
-                scope: 'email profile openid',
-                error_callback: (err: any) => {
-                  clearTimeout(safetyTimer);
-                  setLoading(false);
-                  isHandlingAuth.current = false;
-                  reject(err);
-                },
-                callback: async (tokenResponse) => {
-                  clearTimeout(safetyTimer);
-                  if (tokenResponse.error) {
-                    setLoading(false);
-                    isHandlingAuth.current = false;
-                    reject(new Error(tokenResponse.error));
-                    return;
-                  }
-                  if (tokenResponse.access_token) {
-                    try {
-                      // Fetch verified user profile directly from Google
-                      const userInfoRes = await fetch(
-                        'https://www.googleapis.com/oauth2/v3/userinfo',
-                        {
-                          headers: {
-                            Authorization: `Bearer ${tokenResponse.access_token}`,
-                          },
-                        }
-                      );
-                      const googleProfile = await userInfoRes.json();
-
-                      const response = await authService.googleAuth({
-                        email: googleProfile.email,
-                        name: googleProfile.name,
-                        picture: googleProfile.picture,
-                        googleId: googleProfile.sub,
-                        token: tokenResponse.access_token,
-                      });
-
-                      setUser(response.user);
-                      if (onSuccess) {
-                        onSuccess();
-                      } else {
-                        if (response.user.isOnboarded) {
-                          router.replace(Routes.app.home);
-                        } else {
-                          router.replace(Routes.onboarding.profileDetails);
-                        }
-                      }
-                      resolve();
-                    } catch (apiErr) {
-                      reject(apiErr);
-                    }
-                  }
-                },
-              });
-
-              client.requestAccessToken({ prompt: 'select_account' });
-            } catch (initErr) {
+          const client = window.google.accounts.oauth2.initTokenClient({
+            client_id: googleClientId,
+            scope: 'email profile openid',
+            error_callback: (_err: any) => {
               clearTimeout(safetyTimer);
-              reject(initErr);
-            }
+              setLoading(false);
+              isHandlingAuth.current = false;
+              directOAuthRedirect();
+            },
+            callback: async (tokenResponse) => {
+              clearTimeout(safetyTimer);
+              if (tokenResponse.error) {
+                setLoading(false);
+                isHandlingAuth.current = false;
+                directOAuthRedirect();
+                return;
+              }
+              if (tokenResponse.access_token) {
+                await handleAuthSuccess(tokenResponse.access_token);
+              }
+            },
           });
+
+          client.requestAccessToken({ prompt: 'select_account' });
           return;
         }
       }
 
-      // Universal fallback if outside browser or if GIS fails to initialize
       clearTimeout(safetyTimer);
-      const emailInput =
-        Platform.OS === 'web' && typeof window !== 'undefined'
-          ? window.prompt('Sign in with Google\nEnter your Google email address:', 'user@gmail.com')
-          : 'user@gmail.com';
-
-      if (!emailInput || !emailInput.trim()) {
-        setLoading(false);
-        isHandlingAuth.current = false;
-        return;
-      }
-
-      const email = emailInput.trim();
-      const name = email.split('@')[0];
-
-      const response = await authService.googleAuth({
-        email,
-        name,
-        token: `google_token_${Date.now()}`,
-      });
-
-      setUser(response.user);
-
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        if (response.user.isOnboarded) {
-          router.replace(Routes.app.home);
-        } else {
-          router.replace(Routes.onboarding.profileDetails);
-        }
-      }
+      directOAuthRedirect();
     } catch (err: any) {
       clearTimeout(safetyTimer);
-      console.error('Google Sign-In failed:', err);
-      const msg = err.response?.data?.message || err.message || 'Google Sign-In was cancelled or failed';
-      if (onError) {
-        onError(err);
-      } else {
-        Alert.alert('Google Sign-In', msg);
-      }
-    } finally {
-      clearTimeout(safetyTimer);
-      setLoading(false);
-      isHandlingAuth.current = false;
+      console.error('Google Sign-In init failed:', err);
+      directOAuthRedirect();
     }
   };
 
@@ -255,7 +288,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   iconContainer: {
     marginRight: 12,

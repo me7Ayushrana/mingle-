@@ -39,6 +39,8 @@ router.post('/complete', authenticate, async (req: AuthRequest, res: Response): 
       success: true,
       data: {
         id: user.id,
+        email: user.email,
+        username: user.username,
         alias: user.alias,
         avatarId: user.avatarId,
         mood: user.mood,
