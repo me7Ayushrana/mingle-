@@ -1,0 +1,11 @@
+{
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Mingle",
+        "supportEmail": "itsayushr7@gmail.com"
+      }
+    }
+  }
+}
