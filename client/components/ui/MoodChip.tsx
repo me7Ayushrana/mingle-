@@ -1,13 +1,11 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { memo, useCallback } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui/Text';
 import type { MoodOption } from '@/constants/moods';
-import { moodGradients } from '@/theme/gradients';
 import { colors } from '@/theme/colors';
-import { borderRadius, spacing } from '@/theme/spacing';
+import { spacing } from '@/theme/spacing';
 
 interface MoodChipProps {
   mood: MoodOption;
@@ -16,45 +14,21 @@ interface MoodChipProps {
   compact?: boolean;
 }
 
-export const MoodChip = memo(function MoodChip({ mood, selected, onPress, compact }: MoodChipProps) {
+export const MoodChip = memo(function MoodChip({ mood, selected, onPress }: MoodChipProps) {
   const handlePress = useCallback(() => {
     Haptics.selectionAsync();
     onPress?.(mood.id);
   }, [mood.id, onPress]);
 
-  const content = (
-    <>
-      <Text style={styles.emoji}>{mood.emoji}</Text>
-      {!compact && (
-        <Text variant="label" style={[styles.label, selected && styles.labelSelected]}>
-          {mood.label}
-        </Text>
-      )}
-    </>
-  );
-
-  if (selected) {
-    return (
-      <Pressable onPress={handlePress} accessibilityRole="button" accessibilityState={{ selected }}>
-        <LinearGradient
-          colors={[...moodGradients[mood.id]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.chip, styles.chipSelected]}
-        >
-          {content}
-        </LinearGradient>
-      </Pressable>
-    );
-  }
-
   return (
     <Pressable
       onPress={handlePress}
-      style={[styles.chip, styles.chipDefault]}
+      style={[styles.chip, selected ? styles.chipSelected : styles.chipDefault]}
       accessibilityRole="button"
+      accessibilityState={{ selected }}
     >
-      {content}
+      <View style={[styles.dot, selected && styles.dotSelected]} />
+      <Text style={[styles.label, selected && styles.labelSelected]}>{mood.label}</Text>
     </Pressable>
   );
 });
@@ -63,27 +37,36 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   chipDefault: {
-    backgroundColor: colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   chipSelected: {
-    borderWidth: 0,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  emoji: {
-    fontSize: 18,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  dotSelected: {
+    backgroundColor: colors.white,
   },
   label: {
-    color: colors.foregroundSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   labelSelected: {
     color: colors.white,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

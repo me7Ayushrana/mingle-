@@ -1,18 +1,34 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { memo } from 'react';
 import { StyleSheet, View, Image } from 'react-native';
 
-import { moodGradients } from '@/theme/gradients';
 import { colors } from '@/theme/colors';
 import type { MoodType } from '@/constants/moods';
 
-const AVATAR_COLORS: Record<string, readonly [string, string]> = {
-  'avatar-1': ['#8B5CF6', '#EC4899'],
-  'avatar-2': ['#0EA5E9', '#6366F1'],
-  'avatar-3': ['#10B981', '#3B82F6'],
-  'avatar-4': ['#F59E0B', '#EF4444'],
-  'avatar-5': ['#14B8A6', '#8B5CF6'],
-  'avatar-6': ['#64748B', '#1E293B'],
+const AVATAR_SEEDS: Record<string, { seed: string; bg: string }> = {
+  'avatar-1': { seed: 'Felix', bg: '#27272A' },
+  'avatar-2': { seed: 'Aneka', bg: '#1E293B' },
+  'avatar-3': { seed: 'Jasper', bg: '#1F242D' },
+  'avatar-4': { seed: 'Maya', bg: '#262626' },
+  'avatar-5': { seed: 'Oliver', bg: '#2D2D39' },
+  'avatar-6': { seed: 'Sophia', bg: '#1E293B' },
+  'avatar-7': { seed: 'Leo', bg: '#27272A' },
+  'avatar-8': { seed: 'Zoe', bg: '#1F242D' },
+  'avatar-9': { seed: 'Ethan', bg: '#262626' },
+  'avatar-10': { seed: 'Aria', bg: '#2D2D39' },
+  'avatar-11': { seed: 'Liam', bg: '#27272A' },
+  'avatar-12': { seed: 'Chloe', bg: '#1E293B' },
+  'avatar-13': { seed: 'Noah', bg: '#1F242D' },
+  'avatar-14': { seed: 'Ava', bg: '#262626' },
+  'avatar-15': { seed: 'Lucas', bg: '#2D2D39' },
+  'avatar-16': { seed: 'Mila', bg: '#27272A' },
+  'avatar-17': { seed: 'Mason', bg: '#1E293B' },
+  'avatar-18': { seed: 'Luna', bg: '#1F242D' },
+  'avatar-19': { seed: 'Logan', bg: '#262626' },
+  'avatar-20': { seed: 'Ella', bg: '#2D2D39' },
+  'avatar-21': { seed: 'Alexander', bg: '#27272A' },
+  'avatar-22': { seed: 'Grace', bg: '#1E293B' },
+  'avatar-23': { seed: 'James', bg: '#1F242D' },
+  'avatar-24': { seed: 'Lily', bg: '#262626' },
 };
 
 interface AvatarProps {
@@ -27,27 +43,37 @@ export const Avatar = memo(function Avatar({
   avatarId,
   alias,
   size = 48,
-  mood,
   showOnline,
 }: AvatarProps) {
-  const DEFAULT_GRADIENT = ['#8B5CF6', '#EC4899'] as const;
-
-  const gradientColors =
-    (mood ? moodGradients[mood] : AVATAR_COLORS[avatarId]) ?? DEFAULT_GRADIENT;
-  const [colorStart, colorEnd] = gradientColors;
+  const avatarData = AVATAR_SEEDS[avatarId] ?? AVATAR_SEEDS['avatar-1'] ?? {
+    seed: 'Felix',
+    bg: '#27272A',
+  };
+  const seed = avatarData.seed;
+  const bgColor = avatarData.bg;
 
   return (
     <View style={{ width: size, height: size }}>
-      <LinearGradient
-        colors={[colorStart ?? DEFAULT_GRADIENT[0], colorEnd ?? DEFAULT_GRADIENT[1]]}
-        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }]}
+      <View
+        style={[
+          styles.avatar,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: bgColor,
+            overflow: 'hidden',
+          },
+        ]}
       >
-        <Image 
-          source={{ uri: `https://api.dicebear.com/9.x/micah/png?seed=${avatarId}&backgroundColor=transparent` }}
+        <Image
+          source={{
+            uri: `https://api.dicebear.com/9.x/micah/png?seed=${seed}&backgroundColor=transparent`,
+          }}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
         />
-      </LinearGradient>
+      </View>
       {showOnline ? <View style={[styles.online, { right: 0, bottom: 0 }]} /> : null}
     </View>
   );
@@ -57,6 +83,8 @@ const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   online: {
     position: 'absolute',
@@ -69,4 +97,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export const AVATAR_OPTIONS = Object.keys(AVATAR_COLORS);
+export const AVATAR_OPTIONS = Object.keys(AVATAR_SEEDS);
