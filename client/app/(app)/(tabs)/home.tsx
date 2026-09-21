@@ -33,6 +33,7 @@ import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 import { momentsService } from '@/services/moments.service';
+import { notificationsService } from '@/services/notifications.service';
 import { socketService } from '@/services/socket.service';
 import type { Moment } from '@/types/moment';
 import { HomeSkeleton } from '@/components/skeletons';
@@ -135,10 +136,28 @@ export default function HomeScreen() {
   // Daily vibe check modal state
   const [showVibeCheck, setShowVibeCheck] = useState(false);
 
+  // Notification unread badge
+  const [notifUnread, setNotifUnread] = useState(0);
+
   const myName = user?.alias || user?.username || 'Me';
   const myAvatar = user?.avatarId || 'avatar-1';
 
-  // ─── Data Fetching ──────────────────────────────────
+  // ─── Notification badge polling ────────────────────
+  useEffect(() => {
+    const fetchBadge = async () => {
+      try {
+        const { unreadCount } = await notificationsService.getNotifications();
+        setNotifUnread(unreadCount);
+      } catch {
+        // ignore
+      }
+    };
+    fetchBadge();
+    const interval = setInterval(fetchBadge, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+
   const fetchFeed = useCallback(async () => {
     try {
       const data = await momentsService.getFeed();
@@ -246,13 +265,30 @@ export default function HomeScreen() {
           </Heading>
           <Text style={styles.subtitle}>See what others are thinking</Text>
         </View>
-        <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
-          <Ionicons name="person" size={14} color="rgba(255,255,255,0.6)" />
-          <Text style={styles.myMomentsBtnText}>My Moments</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          {/* Notification Bell */}
+          <Pressable
+            style={styles.notifBellBtn}
+            onPress={() => router.push('/(app)/notifications' as any)}
+          >
+            <Ionicons name="notifications-outline" size={22} color="white" />
+            {notifUnread > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>
+                  {notifUnread > 9 ? '9+' : String(notifUnread)}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable style={styles.myMomentsBtn} onPress={() => router.push('/(app)/my-moments')}>
+            <Ionicons name="person" size={14} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.myMomentsBtnText}>My Moments</Text>
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   );
+
 
   // ─── Render ─────────────────────────────────────────
   return (
@@ -490,7 +526,43 @@ const styles = StyleSheet.create({
   },
   myMomentsBtnText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
 
-  // Moment card
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  notifBellBtn: {
+    position: 'relative',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#FF6B8A',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: '#09090B',
+  },
+  notifBadgeText: {
+    color: 'white',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 13,
+  },
+
   momentCard: {
     paddingHorizontal: spacing['2xl'],
     paddingVertical: spacing.lg,

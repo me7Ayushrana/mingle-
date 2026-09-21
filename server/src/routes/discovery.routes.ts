@@ -58,11 +58,23 @@ router.get('/feed', authenticate, async (req: AuthRequest, res: Response): Promi
     };
 
     if (ageMin || ageMax) {
-      // Query users within acceptable age range (stored as string or default)
-      query.$or = [
-        { age: { $gte: String(ageMin), $lte: String(ageMax) } },
-        { age: { $exists: false } },
-      ];
+      // Use $expr to cast the string age field to a number for accurate range comparison
+      query.$expr = {
+        $and: [
+          {
+            $gte: [
+              { $toInt: { $ifNull: ['$age', '18'] } },
+              ageMin,
+            ],
+          },
+          {
+            $lte: [
+              { $toInt: { $ifNull: ['$age', '99'] } },
+              ageMax,
+            ],
+          },
+        ],
+      };
     }
 
     if (intention && intention !== 'all') {

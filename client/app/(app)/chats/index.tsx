@@ -38,10 +38,16 @@ export default function ChatsListScreen() {
     const otherParticipant = item.participants.find((p) => p._id !== user?.id);
     if (!otherParticipant) return null;
 
+    // A chat is "unread" if it has a recent message we haven't explicitly dismissed
+    const hasMessage = Boolean(item.lastMessageText && item.lastMessageText.trim().length > 0);
+
     return (
       <Animated.View entering={FadeInDown.duration(400).delay(index * 50)}>
-        <Pressable style={styles.chatCard} onPress={() => router.push(`/(app)/chat/${item._id}`)}>
-          <Avatar avatarId={otherParticipant.avatarId} alias={otherParticipant.alias} size={50} />
+        <Pressable style={[styles.chatCard, hasMessage && styles.chatCardActive]} onPress={() => router.push(`/(app)/chat/${item._id}`)}>
+          <View style={{ position: 'relative' }}>
+            <Avatar avatarId={otherParticipant.avatarId} alias={otherParticipant.alias} size={50} />
+            {hasMessage && <View style={styles.unreadDot} />}
+          </View>
           <View style={styles.chatInfo}>
             <View style={styles.chatTopRow}>
               <Heading level={3} style={styles.alias}>
@@ -56,14 +62,16 @@ export default function ChatsListScreen() {
                 </Text>
               )}
             </View>
-            <Text style={styles.lastMessage} numberOfLines={1}>
+            <Text style={hasMessage ? styles.lastMessageUnread : styles.lastMessage} numberOfLines={1}>
               {item.lastMessageText || 'Tap to start chatting'}
             </Text>
           </View>
+          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.2)" />
         </Pressable>
       </Animated.View>
     );
   };
+
 
   return (
     <View style={styles.mainContainer}>
@@ -143,10 +151,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    gap: spacing.md,
+  },
+  chatCardActive: {
+    backgroundColor: 'rgba(108,99,255,0.06)',
+    borderColor: 'rgba(108,99,255,0.12)',
+  },
+  unreadDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#6C63FF',
+    borderWidth: 2,
+    borderColor: '#09090B',
   },
   chatInfo: {
     flex: 1,
-    marginLeft: spacing.md,
   },
   chatTopRow: {
     flexDirection: 'row',
@@ -164,8 +187,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   lastMessage: {
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 14,
+  },
+  lastMessageUnread: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    fontWeight: '500',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -185,3 +213,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
