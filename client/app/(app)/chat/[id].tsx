@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
@@ -46,6 +47,9 @@ export default function ChatScreen() {
   const [maskRequested, setMaskRequested] = useState<boolean>(false);
   const [isMaskRevealed, setIsMaskRevealed] = useState<boolean>(false);
   const [ambientSound, setAmbientSound] = useState<string>('none');
+  const [showSafetyMenu, setShowSafetyMenu] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -175,6 +179,62 @@ export default function ChatScreen() {
     socketService.changeAmbientSound(id, sound);
   };
 
+  const handleUnmatch = async () => {
+    setShowSafetyMenu(false);
+    import('react-native').then(({ Alert }) => {
+      Alert.alert(
+        'Unmatch',
+        `Are you sure you want to unmatch with ${otherUser?.alias || 'this user'}? You will no longer be able to message each other.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unmatch',
+            style: 'destructive',
+            onPress: async () => {
+              const { discoveryService } = await import('@/services/discovery.service');
+              await discoveryService.unmatch(id);
+              router.back();
+            },
+          },
+        ]
+      );
+    });
+  };
+
+  const handleBlockUser = async () => {
+    setShowSafetyMenu(false);
+    if (!otherUser?._id) return;
+    import('react-native').then(({ Alert }) => {
+      Alert.alert(
+        'Block User',
+        `Block ${otherUser.alias}? They will not be able to find your profile or send you messages.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Block',
+            style: 'destructive',
+            onPress: async () => {
+              const { authService } = await import('@/services/auth.service');
+              await authService.blockUser(otherUser._id);
+              router.back();
+            },
+          },
+        ]
+      );
+    });
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason.trim() || !otherUser?._id) return;
+    const { authService } = await import('@/services/auth.service');
+    await authService.reportUser(otherUser._id, reportReason.trim());
+    setShowReportModal(false);
+    setReportReason('');
+    import('react-native').then(({ Alert }) => {
+      Alert.alert('Report Submitted', 'Thank you for keeping Mingle safe. Our moderation team will review this report.');
+    });
+  };
+
   useEffect(() => {
     setTimeout(() => {
       if (messages.length > 0) {
@@ -266,9 +326,14 @@ export default function ChatScreen() {
               </View>
             </View>
 
-            <Pressable onPress={() => setShowMaskDrop(true)} style={styles.iconBtn}>
-              <Ionicons name="eye-off-outline" size={24} color={isMaskRevealed ? colors.primary : 'white'} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Pressable onPress={() => setShowMaskDrop(true)} style={styles.iconBtn}>
+                <Ionicons name="eye-off-outline" size={22} color={isMaskRevealed ? colors.primary : 'white'} />
+              </Pressable>
+              <Pressable onPress={() => setShowSafetyMenu(true)} style={styles.iconBtn}>
+                <Ionicons name="ellipsis-vertical" size={22} color="white" />
+              </Pressable>
+            </View>
           </View>
 
           {/* ── 24h Ephemeral Timer Banner ──────────────────────────── */}
@@ -353,6 +418,87 @@ export default function ChatScreen() {
         isRevealed={isMaskRevealed}
         partnerIdentity={{ name: otherUser?.username || otherUser?.alias }}
       />
+
+      {/* ── Safety Options Modal ─────────────────────────────────── */}
+      {showSafetyMenu && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <BlurView intensity={70} tint="dark" style={styles.menuBackdrop}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowSafetyMenu(false)} />
+            <View style={styles.safetyMenuCard}>
+              <View style={styles.menuHeader}>
+                <Heading level={3} style={{ color: 'white' }}>Safety & Actions</Heading>
+                <Pressable onPress={() => setShowSafetyMenu(false)}>
+                  <Ionicons name="close" size={22} color="white" />
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={handleUnmatch}
+                style={styles.safetyMenuItem}
+              >
+                <Ionicons name="heart-dislike-outline" size={20} color="#F59E0B" />
+                <Text style={styles.safetyMenuText}>Unmatch User</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleBlockUser}
+                style={styles.safetyMenuItem}
+              >
+                <Ionicons name="ban-outline" size={20} color="#EF4444" />
+                <Text style={[styles.safetyMenuText, { color: '#EF4444' }]}>Block User</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setShowSafetyMenu(false);
+                  setShowReportModal(true);
+                }}
+                style={styles.safetyMenuItem}
+              >
+                <Ionicons name="flag-outline" size={20} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.safetyMenuText}>Report User</Text>
+              </Pressable>
+            </View>
+          </BlurView>
+        </View>
+      )}
+
+      {/* ── Report Modal ─────────────────────────────────────────── */}
+      {showReportModal && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <BlurView intensity={80} tint="dark" style={styles.menuBackdrop}>
+            <View style={styles.safetyMenuCard}>
+              <View style={styles.menuHeader}>
+                <Heading level={3} style={{ color: 'white' }}>Report Profile</Heading>
+                <Pressable onPress={() => setShowReportModal(false)}>
+                  <Ionicons name="close" size={22} color="white" />
+                </Pressable>
+              </View>
+
+              <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
+                Please provide details on why you are reporting this user (e.g. harassment, fake profile, inappropriate content):
+              </Text>
+
+              <TextInput
+                style={styles.reportInput}
+                placeholder="Reason for report..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                multiline
+                value={reportReason}
+                onChangeText={setReportReason}
+              />
+
+              <Pressable
+                onPress={handleSubmitReport}
+                style={[styles.submitReportBtn, !reportReason.trim() && { opacity: 0.5 }]}
+                disabled={!reportReason.trim()}
+              >
+                <Text style={styles.submitReportBtnText}>Submit Report</Text>
+              </Pressable>
+            </View>
+          </BlurView>
+        </View>
+      )}
     </View>
   );
 }
@@ -517,5 +663,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
+  },
+  menuBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  safetyMenuCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#18181B',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    paddingBottom: 12,
+  },
+  safetyMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  safetyMenuText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  reportInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 12,
+    color: 'white',
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  submitReportBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  submitReportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
   },
 });

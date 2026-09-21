@@ -1,49 +1,89 @@
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'expo-router';
-import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Pressable } from 'react-native';
+import { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  Pressable,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
-import { Input } from '@/components/ui/Input';
 import { Text, Heading } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
 import { Routes } from '@/constants/routes';
-import { profileDetailsSchema, type ProfileDetailsFormData } from '@/features/auth/validation';
+import { INTENTION_OPTIONS, LIFESTYLE_OPTIONS } from '@/constants/intentions';
+import { INTEREST_CATEGORIES } from '@/constants/interests';
 import { useOnboardingStore } from '@/store/onboarding.store';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
-const BLUE = '#3B82F6';
+const GENDER_OPTIONS = ['Woman', 'Man', 'Non-binary', 'Open to all'];
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();
-  const setProfileDetails = useOnboardingStore((s) => s.setProfileDetails);
+  const onboardingStore = useOnboardingStore();
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ProfileDetailsFormData>({
-    resolver: zodResolver(profileDetailsSchema),
-    defaultValues: {
-      username: '',
-      alias: '',
-      language: '',
-      age: '',
-    },
-  });
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
-  const onSubmit = handleSubmit((data) => {
-    setProfileDetails({
-      username: data.username,
-      alias: data.alias,
-      language: data.language,
-      age: data.age,
-    });
-    router.push(Routes.onboarding.avatarMood);
-  });
+  // Form states
+  const [name, setName] = useState(onboardingStore.name || '');
+  const [username, setUsername] = useState(onboardingStore.username || '');
+  const [age, setAge] = useState(onboardingStore.age || '22');
+  const [gender, setGender] = useState(onboardingStore.gender || 'Woman');
+  const [pronouns, setPronouns] = useState(onboardingStore.pronouns || '');
+
+  const [city, setCity] = useState(onboardingStore.city || 'San Francisco');
+  const [occupation, setOccupation] = useState(onboardingStore.occupation || '');
+  const [education, setEducation] = useState(onboardingStore.education || '');
+  const [bio, setBio] = useState(onboardingStore.bio || '');
+
+  const [selectedIntention, setSelectedIntention] = useState(onboardingStore.intention || 'dating');
+  const [lifestyle, setLifestyleState] = useState(onboardingStore.lifestyle);
+
+  const selectedInterests = onboardingStore.interests;
+
+  const handleNext = () => {
+    if (step === 1) {
+      if (!name.trim()) return;
+      onboardingStore.setBasics({
+        name: name.trim(),
+        username: username.trim() || name.toLowerCase().replace(/[^a-z0-9_]/g, '') + Math.floor(100 + Math.random() * 900),
+        alias: name.trim(),
+        gender,
+        pronouns,
+        age: age.trim() || '22',
+      });
+      setStep(2);
+    } else if (step === 2) {
+      onboardingStore.setDetails({
+        city: city.trim(),
+        occupation: occupation.trim(),
+        education: education.trim(),
+        bio: bio.trim(),
+      });
+      setStep(3);
+    } else if (step === 3) {
+      onboardingStore.setIntention(selectedIntention);
+      onboardingStore.setLifestyle(lifestyle);
+      setStep(4);
+    } else if (step === 4) {
+      router.push(Routes.onboarding.avatarMood);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep((s) => (s - 1) as any);
+    } else {
+      router.back();
+    }
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -53,12 +93,25 @@ export default function ProfileDetailsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex}
         >
-          {/* Header */}
+          {/* Header & Progress */}
           <View style={styles.header}>
-            <View style={styles.stepIndicator}>
-              <View style={[styles.stepDot, styles.stepDotActive]} />
-              <View style={styles.stepDot} />
+            <Pressable onPress={handleBack} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={22} color="white" />
+            </Pressable>
+
+            <View style={styles.progressContainer}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.progressBar,
+                    i <= step && styles.progressBarActive,
+                  ]}
+                />
+              ))}
             </View>
+
+            <Text style={styles.stepCounter}>{step}/5</Text>
           </View>
 
           <ScrollView
@@ -66,101 +119,282 @@ export default function ProfileDetailsScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Title */}
-            <Animated.View entering={FadeIn.duration(600)}>
-              
-              <Heading level={1} style={styles.title}>Your Identity</Heading>
-              <Text style={styles.subtitle}>
-                Set up your anonymous identity. This is what others will see.
-              </Text>
-            </Animated.View>
+            {/* STEP 1: IDENTITY */}
+            {step === 1 && (
+              <Animated.View entering={FadeIn.duration(400)}>
+                <Heading level={1} style={styles.title}>
+                  What&apos;s your name?
+                </Heading>
+                <Text style={styles.subtitle}>
+                  Let others on Mingle get to know the authentic you.
+                </Text>
 
-            {/* Form */}
-            <Animated.View entering={FadeInDown.duration(500).delay(150)} style={styles.form}>
-              <Controller
-                control={control}
-                name="username"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View>
-                    <Input
-                      label="Username"
-                      placeholder="e.g. user_123"
-                      autoCapitalize="none"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      error={errors.username?.message}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>FIRST NAME *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Your name"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>USERNAME</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. alex_vibe"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    autoCapitalize="none"
+                    value={username}
+                    onChangeText={setUsername}
+                  />
+                </View>
+
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                    <Text style={styles.label}>AGE *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. 24"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      keyboardType="numeric"
+                      maxLength={2}
+                      value={age}
+                      onChangeText={setAge}
                     />
-                    <View style={styles.fieldHint}>
-                      <Ionicons name="lock-closed" size={14} color="rgba(255,255,255,0.3)" />
-                      <Text style={styles.fieldHintText}>Used for login. Never shared.</Text>
+                  </View>
+
+                  <View style={[styles.inputGroup, { flex: 1.5 }]}>
+                    <Text style={styles.label}>PRONOUNS</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. she/her, they/them"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      value={pronouns}
+                      onChangeText={setPronouns}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>I IDENTIFY AS</Text>
+                  <View style={styles.chipsRow}>
+                    {GENDER_OPTIONS.map((g) => (
+                      <Pressable
+                        key={g}
+                        onPress={() => setGender(g)}
+                        style={[styles.chip, gender === g && styles.chipActive]}
+                      >
+                        <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>
+                          {g}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* STEP 2: ABOUT & LOCATION */}
+            {step === 2 && (
+              <Animated.View entering={FadeInRight.duration(400)}>
+                <Heading level={1} style={styles.title}>
+                  Where are you based?
+                </Heading>
+                <Text style={styles.subtitle}>
+                  Share a bit about your city, lifestyle, and work.
+                </Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>CITY / LOCATION *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. San Francisco, CA"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={city}
+                    onChangeText={setCity}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>OCCUPATION / JOB</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Product Designer, Software Engineer"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={occupation}
+                    onChangeText={setOccupation}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>EDUCATION / COLLEGE</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Stanford University"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    value={education}
+                    onChangeText={setEducation}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>SHORT BIO</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Tell your story, your quirks, and what makes you happy..."
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    multiline
+                    numberOfLines={4}
+                    maxLength={300}
+                    value={bio}
+                    onChangeText={setBio}
+                  />
+                  <Text style={styles.charCount}>{bio.length}/300</Text>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* STEP 3: INTENTION & LIFESTYLE */}
+            {step === 3 && (
+              <Animated.View entering={FadeInRight.duration(400)}>
+                <Heading level={1} style={styles.title}>
+                  What are you looking for?
+                </Heading>
+                <Text style={styles.subtitle}>
+                  Mingle connects people for dating, friendship, and networking.
+                </Text>
+
+                <View style={styles.intentionsList}>
+                  {INTENTION_OPTIONS.map((opt) => {
+                    const isSelected = selectedIntention === opt.id;
+                    return (
+                      <Pressable
+                        key={opt.id}
+                        onPress={() => setSelectedIntention(opt.id)}
+                        style={[styles.intentionCard, isSelected && styles.intentionCardActive]}
+                      >
+                        <View style={styles.intentionIconWrapper}>
+                          <Ionicons
+                            name={opt.iconName as any}
+                            size={24}
+                            color={isSelected ? colors.primary : 'rgba(255,255,255,0.6)'}
+                          />
+                        </View>
+                        <View style={styles.intentionTextWrapper}>
+                          <Text style={[styles.intentionTitle, isSelected && styles.intentionTitleActive]}>
+                            {opt.label}
+                          </Text>
+                          <Text style={styles.intentionDesc}>{opt.description}</Text>
+                        </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Heading level={3} style={[styles.sectionHeading, { marginTop: 24 }]}>
+                  Lifestyle & Habits
+                </Heading>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>DRINKING</Text>
+                  <View style={styles.chipsRow}>
+                    {LIFESTYLE_OPTIONS.drinking.map((item) => (
+                      <Pressable
+                        key={item}
+                        onPress={() => setLifestyleState({ ...lifestyle, drinking: item })}
+                        style={[styles.chip, lifestyle.drinking === item && styles.chipActive]}
+                      >
+                        <Text
+                          style={[styles.chipText, lifestyle.drinking === item && styles.chipTextActive]}
+                        >
+                          {item}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>PETS</Text>
+                  <View style={styles.chipsRow}>
+                    {LIFESTYLE_OPTIONS.pets.map((item) => (
+                      <Pressable
+                        key={item}
+                        onPress={() => setLifestyleState({ ...lifestyle, pets: item })}
+                        style={[styles.chip, lifestyle.pets === item && styles.chipActive]}
+                      >
+                        <Text
+                          style={[styles.chipText, lifestyle.pets === item && styles.chipTextActive]}
+                        >
+                          {item}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* STEP 4: INTERESTS */}
+            {step === 4 && (
+              <Animated.View entering={FadeInRight.duration(400)}>
+                <Heading level={1} style={styles.title}>
+                  Your Passions & Interests
+                </Heading>
+                <Text style={styles.subtitle}>
+                  Select 3 to 8 topics you love talking about.
+                </Text>
+
+                <View style={styles.interestCounterRow}>
+                  <Text style={styles.interestCountText}>
+                    Selected: {selectedInterests.length}/8
+                  </Text>
+                </View>
+
+                {INTEREST_CATEGORIES.map((cat) => (
+                  <View key={cat.category} style={styles.categorySection}>
+                    <Text style={styles.categoryTitle}>{cat.category.toUpperCase()}</Text>
+                    <View style={styles.chipsRow}>
+                      {cat.items.map((item) => {
+                        const isSelected = selectedInterests.includes(item);
+                        return (
+                          <Pressable
+                            key={item}
+                            onPress={() => onboardingStore.toggleInterest(item)}
+                            style={[styles.interestChip, isSelected && styles.interestChipActive]}
+                          >
+                            <Text
+                              style={[
+                                styles.interestChipText,
+                                isSelected && styles.interestChipTextActive,
+                              ]}
+                            >
+                              {item}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
-                )}
-              />
+                ))}
+              </Animated.View>
+            )}
 
-              <Controller
-                control={control}
-                name="alias"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View>
-                    <Input
-                      label="Anonymous Alias"
-                      placeholder="e.g. QuietRiver"
-                      autoCapitalize="none"
-                      value={value}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      error={errors.alias?.message}
-                    />
-                    <View style={styles.fieldHint}>
-                      <Ionicons name="eye" size={14} color="rgba(255,255,255,0.3)" />
-                      <Text style={styles.fieldHintText}>This is what others will see.</Text>
-                    </View>
-                  </View>
-                )}
+            {/* Next Button */}
+            <Animated.View entering={FadeInDown.duration(400)} style={styles.footer}>
+              <Button
+                title={step === 4 ? 'Continue to Photos & Prompts' : 'Continue'}
+                size="lg"
+                onPress={handleNext}
+                disabled={step === 1 && !name.trim()}
+                style={styles.nextButton}
               />
-
-              <Controller
-                control={control}
-                name="language"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    label="Language Preference"
-                    placeholder="e.g. English"
-                    autoCapitalize="words"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    error={errors.language?.message}
-                  />
-                )}
-              />
-
-              <Controller
-                control={control}
-                name="age"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    label="Age"
-                    placeholder="e.g. 21"
-                    keyboardType="number-pad"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    error={errors.age?.message}
-                  />
-                )}
-              />
-            </Animated.View>
-
-            {/* Footer */}
-            <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.footer}>
-              <Pressable style={styles.submitBtn} onPress={onSubmit}>
-                <LinearGradient colors={[BLUE, '#1D4ED8']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-                <Text style={styles.submitBtnText}>Next Step</Text>
-                <Ionicons name="arrow-forward" size={20} color="white" />
-              </Pressable>
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -172,83 +406,210 @@ export default function ProfileDetailsScreen() {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#000', alignItems: 'center' },
   safeArea: { flex: 1, width: '100%', maxWidth: 520 },
-  flex: { flex: 1, width: '100%' },
+  flex: { flex: 1 },
   header: {
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  stepIndicator: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  stepDot: {
-    width: 24,
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    gap: 6,
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  progressBar: {
+    flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDotActive: {
-    backgroundColor: BLUE,
-    width: 32,
+  progressBarActive: {
+    backgroundColor: colors.primary,
+  },
+  stepCounter: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '600',
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: spacing['2xl'],
-    paddingBottom: spacing['4xl'],
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(59,130,246,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing['4xl'] * 2,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    color: colors.white,
-    marginTop: spacing['2xl'],
-    marginBottom: spacing.sm,
+    color: 'white',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
     color: 'rgba(255,255,255,0.5)',
-    marginBottom: spacing['3xl'],
+    marginTop: 6,
+    marginBottom: spacing['2xl'],
+    lineHeight: 22,
   },
-  form: {
-    gap: spacing.xl,
+  inputGroup: {
+    marginBottom: spacing.xl,
   },
-  fieldHint: {
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    color: 'white',
+    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.3)',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  row: {
+    flexDirection: 'row',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: 'white',
+    fontWeight: '700',
+  },
+  intentionsList: {
+    gap: 12,
+  },
+  intentionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
-  fieldHintText: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 12,
+  intentionCardActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: colors.primary,
   },
-  footer: {
-    marginTop: spacing['3xl'],
-    gap: spacing.lg,
-  },
-  submitBtn: {
-    flexDirection: 'row',
+  intentionIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
+    marginRight: 14,
   },
-  submitBtnText: {
+  intentionTextWrapper: {
+    flex: 1,
+  },
+  intentionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
+  },
+  intentionTitleActive: {
+    color: 'white',
+  },
+  intentionDesc: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 2,
+  },
+  sectionHeading: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.white,
+    color: 'white',
+    marginBottom: 12,
+  },
+  interestCounterRow: {
+    marginBottom: 16,
+  },
+  interestCountText: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  categorySection: {
+    marginBottom: 20,
+  },
+  categoryTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.35)',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  interestChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  interestChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  interestChipText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '500',
+  },
+  interestChipTextActive: {
+    color: 'white',
+    fontWeight: '700',
+  },
+  footer: {
+    marginTop: spacing.xl,
+  },
+  nextButton: {
+    width: '100%',
   },
 });

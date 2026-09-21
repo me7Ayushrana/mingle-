@@ -19,28 +19,32 @@ export const otpSchema = z.object({
 export const aliasSchema = z.object({
   alias: z
     .string()
-    .min(3, 'Alias must be at least 3 characters')
-    .max(24, 'Alias must be at most 24 characters')
-    .regex(/^[a-zA-Z0-9_\s-]+$/, 'Only letters, numbers, spaces, _ and - allowed'),
+    .min(2, 'Name must be at least 2 characters')
+    .max(30, 'Name must be at most 30 characters'),
 });
 
-export const registerSchema = z.object({
-  email: emailSchema.shape.email,
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, 'Name is required').optional(),
+    email: emailSchema.shape.email,
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  });
 
 export const profileDetailsSchema = z.object({
-  username: z.string()
+  name: z.string().min(2, 'Name is required'),
+  username: z
+    .string()
     .min(3, 'Username must be at least 3 characters')
     .max(20, 'Username must be at most 20 characters')
     .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores allowed'),
-  alias: aliasSchema.shape.alias,
-  language: z.string().min(1, 'Language is required'),
   age: z.string().min(1, 'Age is required'),
+  gender: z.string().min(1, 'Gender is required'),
+  pronouns: z.string().optional(),
 });
 
 export type EmailFormData = z.infer<typeof emailSchema>;

@@ -22,6 +22,8 @@ import groupsRoutes from './routes/groups.routes';
 import moderationRoutes from './routes/moderation.routes';
 import onboardingRoutes from './routes/onboarding.routes';
 import voiceRoutes from './routes/voice.routes';
+import discoveryRoutes from './routes/discovery.routes';
+import matchesRoutes from './routes/matches.routes';
 
 const app = express();
 
@@ -31,14 +33,14 @@ const app = express();
 app.use(helmet());
 app.use(cors({ origin: config.corsOrigin, credentials: true }));
 app.use(morgan(config.isDev ? 'dev' : 'combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // ---------------------------------------------------------------------------
 // Health check
 // ---------------------------------------------------------------------------
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'Mingle API', timestamp: new Date().toISOString() });
 });
 
 // ---------------------------------------------------------------------------
@@ -49,6 +51,12 @@ app.use('/api/auth', authRoutes);
 
 app.use('/users', usersRoutes);
 app.use('/api/users', usersRoutes);
+
+app.use('/discovery', discoveryRoutes);
+app.use('/api/discovery', discoveryRoutes);
+
+app.use('/matches', matchesRoutes);
+app.use('/api/matches', matchesRoutes);
 
 app.use('/moments', momentsRoutes);
 app.use('/api/moments', momentsRoutes);
@@ -82,7 +90,7 @@ initSocket(httpServer);
 
 httpServer.listen(config.port, () => {
   console.log(`
-  🚀 Mingle API Server
+  🚀 Mingle API Server Running
   ───────────────────────────
   Environment : ${config.nodeEnv}
   Port        : ${config.port}

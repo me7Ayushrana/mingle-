@@ -1,0 +1,35 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+export interface INotification extends Document {
+  userId: mongoose.Types.ObjectId;
+  type: 'match' | 'like' | 'message' | 'system';
+  title: string;
+  message: string;
+  data?: {
+    matchId?: string;
+    chatId?: string;
+    fromUserId?: string;
+    fromName?: string;
+    fromAvatarId?: string;
+    fromPhoto?: string;
+  };
+  read: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const NotificationSchema = new Schema<INotification>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: ['match', 'like', 'message', 'system'], required: true },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    data: { type: Schema.Types.Mixed },
+    read: { type: Boolean, default: false },
+  },
+  { timestamps: true }
+);
+
+NotificationSchema.index({ userId: 1, createdAt: -1 });
+
+export const Notification = mongoose.model<INotification>('Notification', NotificationSchema);
