@@ -16,7 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImageFromGallery, takePhotoWithCamera } from '@/utils/imagePicker';
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
@@ -178,28 +178,8 @@ export default function ProfileScreen() {
 
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Photo Permission Needed',
-          'Please allow photo library access to choose pictures from your device gallery.'
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 5],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]!;
-        const photoUrl = asset.base64
-          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
-          : asset.uri;
+      const photoUrl = await pickImageFromGallery();
+      if (photoUrl) {
         handleAddPhoto(photoUrl);
       }
     } catch (err) {
@@ -210,27 +190,8 @@ export default function ProfileScreen() {
 
   const handleTakePhoto = async () => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Camera Permission Needed',
-          'Please allow camera access to take a profile picture.'
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 5],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]!;
-        const photoUrl = asset.base64
-          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
-          : asset.uri;
+      const photoUrl = await takePhotoWithCamera();
+      if (photoUrl) {
         handleAddPhoto(photoUrl);
       }
     } catch (err) {

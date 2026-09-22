@@ -14,7 +14,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImageFromGallery } from '@/utils/imagePicker';
 
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
 import { MoodChip } from '@/components/ui/MoodChip';
@@ -99,28 +99,8 @@ export default function AvatarMoodScreen() {
 
   const handlePickFromGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          'Photo Permission Needed',
-          'Please allow photo library access in your settings to upload pictures from your gallery.'
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 5],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0]!;
-        const photoUrl = asset.base64
-          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
-          : asset.uri;
+      const photoUrl = await pickImageFromGallery();
+      if (photoUrl) {
         store.addPhoto({
           id: `photo-${Date.now()}`,
           url: photoUrl,
