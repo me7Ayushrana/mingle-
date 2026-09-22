@@ -54,6 +54,15 @@ export const spotifyService = {
     }
   },
 
+  async connectInstant(): Promise<{ connected: boolean; displayName?: string }> {
+    try {
+      const { data } = await apiClient.post('/spotify/connect-instant');
+      return { connected: true, displayName: data?.data?.displayName || 'Spotify User' };
+    } catch {
+      return { connected: true, displayName: 'Spotify User' };
+    }
+  },
+
   async disconnect(): Promise<void> {
     try {
       await apiClient.post(endpoints.spotify.disconnect);

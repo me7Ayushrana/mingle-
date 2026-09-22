@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
@@ -173,6 +174,69 @@ export default function ProfileScreen() {
     setPhotos((prev) => [...prev, newP]);
     setCustomPhotoUrl('');
     setShowPhotoAddModal(false);
+  };
+
+  const handlePickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Permission Needed',
+          'Please allow photo library access to choose pictures from your device gallery.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0]!;
+        const photoUrl = asset.base64
+          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri;
+        handleAddPhoto(photoUrl);
+      }
+    } catch (err) {
+      console.error('Pick from gallery error:', err);
+      Alert.alert('Error', 'Could not open photo gallery.');
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Needed',
+          'Please allow camera access to take a profile picture.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0]!;
+        const photoUrl = asset.base64
+          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri;
+        handleAddPhoto(photoUrl);
+      }
+    } catch (err) {
+      console.error('Take photo error:', err);
+      Alert.alert('Error', 'Could not open camera.');
+    }
   };
 
   const handleDeletePhoto = (id: string) => {
@@ -831,14 +895,41 @@ export default function ProfileScreen() {
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Heading level={3} style={{ color: 'white' }}>
-                  Add Photo
+                  Add Profile Photo
                 </Heading>
                 <Pressable onPress={() => setShowPhotoAddModal(false)}>
                   <Ionicons name="close" size={22} color="white" />
                 </Pressable>
               </View>
 
-              <Text style={styles.modalLabel}>QUICK SELECT FROM HIGH-RES PORTRAITS</Text>
+              {/* Primary Gallery & Camera Action Buttons */}
+              <View style={styles.photoActionRow}>
+                <Pressable
+                  onPress={handlePickFromGallery}
+                  style={styles.galleryPickPrimaryBtn}
+                >
+                  <LinearGradient
+                    colors={colors.primaryGradient}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  <Ionicons name="images" size={20} color="white" />
+                  <Text style={styles.galleryPickPrimaryText}>Choose from Gallery</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleTakePhoto}
+                  style={styles.cameraPickBtn}
+                >
+                  <Ionicons name="camera" size={20} color="white" />
+                  <Text style={styles.cameraPickText}>Camera</Text>
+                </Pressable>
+              </View>
+
+              <Text style={[styles.modalLabel, { marginTop: 16 }]}>
+                OR QUICK SELECT FROM PRESET PORTRAITS
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
                 {SAMPLE_PHOTO_PRESETS.map((url) => (
                   <Pressable
@@ -861,10 +952,10 @@ export default function ProfileScreen() {
               />
 
               <Button
-                title="Add to Profile"
+                title="Add via URL"
                 size="md"
                 onPress={() => handleAddPhoto(customPhotoUrl)}
-                style={{ marginTop: 14 }}
+                style={{ marginTop: 12 }}
               />
             </View>
           </BlurView>
@@ -1387,5 +1478,44 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 13,
     fontWeight: '700',
+  },
+  photoActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  galleryPickPrimaryBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    overflow: 'hidden',
+  },
+  galleryPickPrimaryText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cameraPickBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 14,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  cameraPickText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

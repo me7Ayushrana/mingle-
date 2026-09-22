@@ -7,12 +7,14 @@ import {
   View,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
 import { MoodChip } from '@/components/ui/MoodChip';
@@ -95,6 +97,43 @@ export default function AvatarMoodScreen() {
     });
   };
 
+  const handlePickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Photo Permission Needed',
+          'Please allow photo library access in your settings to upload pictures from your gallery.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0]!;
+        const photoUrl = asset.base64
+          ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+          : asset.uri;
+        store.addPhoto({
+          id: `photo-${Date.now()}`,
+          url: photoUrl,
+          isPrimary: store.photos.length === 0,
+          order: store.photos.length,
+        });
+      }
+    } catch (err) {
+      console.error('Pick from gallery error:', err);
+      Alert.alert('Error', 'Could not open photo gallery.');
+    }
+  };
+
   return (
     <View style={styles.mainContainer}>
       <LinearGradient colors={['#18181B', '#000000']} style={StyleSheet.absoluteFillObject} />
@@ -147,11 +186,26 @@ export default function AvatarMoodScreen() {
                 Choose Photos & Avatar
               </Heading>
               <Text style={styles.subtitle}>
-                Your photos will be showcased in the Mingle Discovery Deck.
+                Upload real photos from your gallery or choose high-res portraits.
               </Text>
 
+              {/* Gallery Pick Button */}
+              <Pressable
+                onPress={handlePickFromGallery}
+                style={styles.onboardingGalleryBtn}
+              >
+                <LinearGradient
+                  colors={colors.primaryGradient}
+                  style={StyleSheet.absoluteFillObject}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+                <Ionicons name="images" size={22} color="white" />
+                <Text style={styles.onboardingGalleryText}>Choose from Phone Gallery</Text>
+              </Pressable>
+
               {/* Sample Photo Presets */}
-              <Text style={styles.sectionLabel}>PRESET PORTRAIT PHOTOS</Text>
+              <Text style={[styles.sectionLabel, { marginTop: 20 }]}>OR SELECT FROM PRESETS</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoCarousel}>
                 {SAMPLE_PHOTO_PRESETS.map((url, index) => {
                   const isAdded = store.photos.some((p) => p.url === url);
@@ -542,5 +596,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  onboardingGalleryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  onboardingGalleryText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

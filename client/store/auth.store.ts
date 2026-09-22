@@ -3,9 +3,9 @@ import { create } from 'zustand';
 import type { AnonymousProfile } from '@/types/auth';
 import { persistentStorage, secureStorage } from '@/utils/storage';
 import { StorageKeys } from '@/constants/storage';
-import { apiClient } from '@/api/client';
-import { endpoints } from '@/api/endpoints';
 import { authService } from '@/services/auth.service';
+
+const USER_STORAGE_KEY = 'mingle_auth_user';
 
 interface AuthState {
   user: AnonymousProfile | null;
@@ -17,28 +17,41 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   setOnboarded: (value: boolean) => void;
   hydrate: () => Promise<void>;
-  reset: () => void;
+  reset: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
   isLoading: true,
   isOnboarded: false,
 
-  setUser: (user) =>
+  setUser: (user) => {
+    if (user) {
+      persistentStorage.set(USER_STORAGE_KEY, JSON.stringify(user)).catch(() => {});
+    } else {
+      persistentStorage.remove(USER_STORAGE_KEY).catch(() => {});
+    }
     set({
       user,
       isAuthenticated: Boolean(user),
       isOnboarded: user?.isOnboarded ?? false,
-    }),
+    });
+  },
 
   setLoading: (isLoading) => set({ isLoading }),
 
   setOnboarded: async (value) => {
     await persistentStorage.setBoolean(StorageKeys.onboardingComplete, value);
-    set({ isOnboarded: value });
+    const currentUser = get().user;
+    if (currentUser) {
+      const updated = { ...currentUser, isOnboarded: value };
+      await persistentStorage.set(USER_STORAGE_KEY, JSON.stringify(updated));
+      set({ user: updated, isOnboarded: value });
+    } else {
+      set({ isOnboarded: value });
+    }
   },
 
   hydrate: async () => {
@@ -72,52 +85,84 @@ export const useAuthStore = create<AuthState>((set) => ({
             token: accessToken,
           });
 
+          await persistentStorage.set(USER_STORAGE_KEY, JSON.stringify(response.user));
           set({
             user: response.user,
             token: response.accessToken,
             isAuthenticated: true,
-            isOnboarded: response.user.isOnboarded ?? false,
+            isOnboarded: response.user.isOnboarded ?? true,
             isLoading: false,
           });
           return;
         }
       }
 
-      const token = await secureStorage.getToken();
+      // 2. Load cached credentials and profile
+      const [token, cachedUserStr] = await Promise.all([
+        secureStorage.getToken(),
+        persistentStorage.get(USER_STORAGE_KEY),
+      ]);
 
-      if (!token) {
-        // No saved token — user needs to log in
-        set({ isLoading: false });
+      let cachedUser: AnonymousProfile | null = null;
+      if (cachedUserStr) {
+        try {
+          cachedUser = JSON.parse(cachedUserStr);
+        } catch {}
+      }
+
+      if (!token && !cachedUser) {
+        // No saved token and no cached user — user needs to log in
+        set({ isLoading: false, isAuthenticated: false, user: null });
         return;
       }
 
-      // Token exists — try to restore the session by fetching the user profile
-      set({ token });
+      // If we have cached profile or token, IMMEDIATELY restore session so tab reopen is instant
+      if (cachedUser) {
+        set({
+          user: cachedUser,
+          token: token || 'cached_session_token',
+          isAuthenticated: true,
+          isOnboarded: cachedUser.isOnboarded ?? true,
+          isLoading: false,
+        });
+      } else if (token) {
+        set({
+          token,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      }
 
-      const user = await authService.getMe();
-
-      set({
-        user,
-        token,
-        isAuthenticated: true,
-        isOnboarded: user.isOnboarded ?? false,
-        isLoading: false,
-      });
-    } catch {
-      // Token is expired/invalid — clear everything and send to login
-      await secureStorage.clearTokens();
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        isOnboarded: false,
-        isLoading: false,
-      });
+      // 3. In background, refresh profile from server if token is available
+      if (token) {
+        try {
+          const freshUser = await authService.getMe();
+          if (freshUser) {
+            await persistentStorage.set(USER_STORAGE_KEY, JSON.stringify(freshUser));
+            set({
+              user: freshUser,
+              isAuthenticated: true,
+              isOnboarded: freshUser.isOnboarded ?? true,
+              isLoading: false,
+            });
+          }
+        } catch (err: any) {
+          // If network error or temporary server issue, DO NOT log out! Keep cached user!
+          console.warn('Silent session refresh skipped due to network/server response:', err?.message);
+        }
+      }
+    } catch (err) {
+      console.error('Hydration error:', err);
+      set({ isLoading: false });
     }
   },
 
   reset: async () => {
-    await secureStorage.clearTokens();
+    await Promise.all([
+      secureStorage.clearTokens(),
+      persistentStorage.remove(USER_STORAGE_KEY),
+      persistentStorage.remove(StorageKeys.onboardingComplete),
+    ]);
     set({
       user: null,
       token: null,
