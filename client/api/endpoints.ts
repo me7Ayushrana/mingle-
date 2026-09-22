@@ -66,4 +66,43 @@ export const endpoints = {
     actions: '/moderation/actions',
   },
   onboarding: '/onboarding/complete',
+  spotify: {
+    authUrl: '/spotify/auth-url',
+    callback: '/spotify/callback',
+    disconnect: '/spotify/disconnect',
+    status: '/spotify/status',
+    topArtists: '/spotify/top-artists',
+    topTracks: '/spotify/top-tracks',
+    playlists: '/spotify/playlists',
+    currentlyPlaying: '/spotify/currently-playing',
+    recentlyPlayed: '/spotify/recently-played',
+    shareCurrent: '/spotify/share-current',
+    songOfDay: '/spotify/song-of-the-day',
+    search: '/spotify/search',
+  },
+  music: {
+    profile: (userId: string) => `/music/profile/${userId}`,
+    updateProfile: '/music/profile',
+    notes: '/music/notes',
+    userNotes: (userId: string) => `/music/notes/${userId}`,
+    noteById: (id: string) => `/music/notes/${id}`,
+    chemistry: (userId: string) => `/music/chemistry/${userId}`,
+    overlap: (userId: string) => `/music/overlap/${userId}`,
+    icebreakers: (userId: string) => `/music/icebreakers/${userId}`,
+    voiceIntro: (userId: string) => `/music/voice-intro/${userId}`,
+    uploadVoiceIntro: '/music/voice-intro',
+  },
+  playlists: {
+    forMatch: (matchId: string) => `/playlists/match/${matchId}`,
+    addTrack: (matchId: string) => `/playlists/match/${matchId}/tracks`,
+    removeTrack: (matchId: string, trackId: string) =>
+      `/playlists/match/${matchId}/tracks/${trackId}`,
+    voteTrack: (matchId: string, trackId: string) =>
+      `/playlists/match/${matchId}/tracks/${trackId}/vote`,
+  },
+  musicMessages: {
+    list: (chatId: string) => `/chats/${chatId}/music-messages`,
+    send: (chatId: string) => `/chats/${chatId}/music-messages`,
+    like: (chatId: string, msgId: string) => `/chats/${chatId}/music-messages/${msgId}/like`,
+  },
 } as const;

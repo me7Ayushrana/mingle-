@@ -47,6 +47,9 @@ export default function AppLayout() {
       <Stack.Screen name="groups/invite/[code]" options={{ animation: 'slide_from_bottom' }} />
       <Stack.Screen name="feedbacks" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="music/index" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="music/[userId]" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="music/shared-playlist/[matchId]" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

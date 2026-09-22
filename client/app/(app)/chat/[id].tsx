@@ -17,16 +17,20 @@ import { BlurView } from 'expo-blur';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
+import { Linking } from 'react-native';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 import { useAuthStore } from '@/store/auth.store';
 import { socketService } from '@/services/socket.service';
 import { chatsService, ChatMessage, ChatParticipant } from '@/services/chats.service';
+import { musicMessagesService } from '@/services/musicMessages.service';
 
 import { EphemeralTimerBadge } from '@/features/chat/components/EphemeralTimerBadge';
 import { IcebreakerDeck } from '@/features/chat/components/IcebreakerDeck';
 import { MaskDropModal } from '@/features/chat/components/MaskDropModal';
 import { AmbientSoundPlayer } from '@/features/chat/components/AmbientSoundPlayer';
+import SendSongPicker from '@/components/music/SendSongPicker';
+import MusicMessageBubble from '@/components/music/MusicMessageBubble';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -243,11 +247,93 @@ export default function ChatScreen() {
     }, 200);
   }, [messages]);
 
-  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+  const [showSendSongPicker, setShowSendSongPicker] = useState(false);
+
+  const handleSendSong = async (
+    track: { spotifyId: string; trackName: string; artistName: string; albumArt?: string; spotifyUrl: string },
+    messageText: string
+  ) => {
+    const myId = user?.id || 'user-me';
+    const myAlias = user?.alias || user?.username || 'Me';
+    const myAvatar = user?.avatarId || 'avatar-1';
+
+    const localMsg: any = {
+      _id: `music-msg-${Date.now()}`,
+      chatId: id,
+      senderId: {
+        _id: myId,
+        alias: myAlias,
+        username: user?.username || 'me',
+        avatarId: myAvatar,
+      },
+      text: messageText
+        ? `🎧 Sent a song: ${track.trackName} - ${track.artistName}\n"${messageText}"`
+        : `🎧 Sent a song: ${track.trackName} - ${track.artistName}`,
+      spotifyId: track.spotifyId,
+      trackName: track.trackName,
+      artistName: track.artistName,
+      albumArt: track.albumArt,
+      spotifyUrl: track.spotifyUrl,
+      message: messageText,
+      likes: [],
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, localMsg]);
+
+    try {
+      await musicMessagesService.sendSong(id, track, messageText);
+    } catch (err) {
+      console.error('Failed to send song message via API', err);
+    }
+  };
+
+  const renderMessage = ({ item, index }: { item: any; index: number }) => {
     const isMe =
       typeof item.senderId === 'string'
         ? item.senderId === user?.id
         : item.senderId._id === user?.id;
+
+    if (item.spotifyId && item.trackName) {
+      return (
+        <View key={item._id || index} style={{ marginVertical: 4 }}>
+          <MusicMessageBubble
+            message={{
+              id: item._id,
+              trackName: item.trackName,
+              artistName: item.artistName,
+              albumArt: item.albumArt,
+              spotifyUrl: item.spotifyUrl,
+              message: item.message,
+              likes: item.likes || [],
+              createdAt: item.createdAt,
+            }}
+            senderName={isMe ? 'You' : otherUser?.alias || 'Partner'}
+            isMine={isMe}
+            onLike={async () => {
+              if (item._id) {
+                const res = await musicMessagesService.toggleLike(id, item._id);
+                setMessages((prev: any[]) =>
+                  prev.map((m) =>
+                    m._id === item._id
+                      ? {
+                          ...m,
+                          likes: res.liked
+                            ? [...(m.likes || []), user?.id]
+                            : (m.likes || []).filter((l: string) => l !== user?.id),
+                        }
+                      : m
+                  )
+                );
+              }
+            }}
+            onOpenSpotify={(url) => {
+              if (url) Linking.openURL(url);
+            }}
+            currentUserId={user?.id || ''}
+          />
+        </View>
+      );
+    }
 
     return (
       <Animated.View
@@ -327,6 +413,12 @@ export default function ChatScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Pressable
+                onPress={() => router.push(`/music/shared-playlist/${id}` as any)}
+                style={styles.iconBtn}
+              >
+                <Ionicons name="musical-notes-outline" size={22} color="#1DB954" />
+              </Pressable>
               <Pressable onPress={() => setShowMaskDrop(true)} style={styles.iconBtn}>
                 <Ionicons name="eye-off-outline" size={22} color={isMaskRevealed ? colors.primary : 'white'} />
               </Pressable>
@@ -369,6 +461,10 @@ export default function ChatScreen() {
 
           {/* ── Input Area ──────────────────────────────────────── */}
           <View style={styles.inputArea}>
+            <Pressable onPress={() => setShowSendSongPicker(true)} style={styles.attachBtn}>
+              <Ionicons name="musical-note" size={20} color="#1DB954" />
+            </Pressable>
+
             <Pressable onPress={() => setShowIcebreakers(!showIcebreakers)} style={styles.attachBtn}>
               <Ionicons name="sparkles" size={20} color={showIcebreakers ? colors.primary : 'rgba(255,255,255,0.6)'} />
             </Pressable>
@@ -499,6 +595,16 @@ export default function ChatScreen() {
           </BlurView>
         </View>
       )}
+
+      {/* ── Send Song Picker Modal ──────────────────────────────── */}
+      <SendSongPicker
+        visible={showSendSongPicker}
+        onClose={() => setShowSendSongPicker(false)}
+        onSend={(track, msg) => {
+          handleSendSong(track, msg);
+          setShowSendSongPicker(false);
+        }}
+      />
     </View>
   );
 }

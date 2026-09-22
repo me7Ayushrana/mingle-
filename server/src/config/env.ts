@@ -33,5 +33,12 @@ export const config = {
   livekitApiSecret: process.env['LIVEKIT_API_SECRET'] ?? '',
   livekitUrl: process.env['LIVEKIT_URL'] ?? '',
 
+  // Spotify OAuth
+  spotifyClientId: process.env['SPOTIFY_CLIENT_ID'] ?? '',
+  spotifyClientSecret: process.env['SPOTIFY_CLIENT_SECRET'] ?? '',
+  spotifyRedirectUri:
+    process.env['SPOTIFY_REDIRECT_URI'] ??
+    'https://mingle-api-dukk.onrender.com/api/spotify/callback',
+
   isDev: (process.env['NODE_ENV'] ?? 'development') === 'development',
 } as const;

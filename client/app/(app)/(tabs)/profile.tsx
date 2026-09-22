@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
+import { useRouter } from 'expo-router';
 import { AVATAR_OPTIONS, Avatar } from '@/components/ui/Avatar';
 import { Text, Heading } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
@@ -23,6 +24,9 @@ import { INTENTION_OPTIONS, LIFESTYLE_OPTIONS } from '@/constants/intentions';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/hooks/useAuth';
 import { authService } from '@/services/auth.service';
+import { musicService } from '@/services/music.service';
+import MusicVibeSection from '@/components/music/MusicVibeSection';
+import VoiceIntroRecorder from '@/components/music/VoiceIntroRecorder';
 import { spacing } from '@/theme/spacing';
 import { colors } from '@/theme/colors';
 
@@ -81,6 +85,42 @@ export default function ProfileScreen() {
   // Settings
   const [privacy, setPrivacy] = useState(user?.privacy || { showOnline: true, showDistance: true, incognito: false });
   const [notifications, setNotifications] = useState(user?.notificationPreferences || { matches: true, messages: true, likes: true });
+
+  // Music & Voice state
+  const router = useRouter();
+  const [voiceIntro, setVoiceIntro] = useState<any>(null);
+  const [musicProfile, setMusicProfile] = useState<any>(null);
+  const [musicPrivacy, setMusicPrivacy] = useState<any>({
+    showCurrentlyPlaying: false,
+    showTopArtists: true,
+    showTopTracks: true,
+    showPlaylists: true,
+    showMusicChemistry: true,
+    showVoiceIntro: true,
+    voiceIntroMatchesOnly: false,
+  });
+
+  const loadMusic = async () => {
+    if (user?.id) {
+      try {
+        const [mp, vi] = await Promise.all([
+          musicService.getMusicProfile(user.id),
+          musicService.getVoiceIntro(user.id),
+        ]);
+        if (mp) {
+          setMusicProfile(mp);
+          if (mp.privacy) setMusicPrivacy(mp.privacy);
+        }
+        if (vi) setVoiceIntro(vi);
+      } catch (err) {
+        console.error('Failed to load music/voice intro:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadMusic();
+  }, [user?.id]);
 
   // Calculate Profile Completion %
   const completionPercentage = useMemo(() => {
@@ -455,6 +495,42 @@ export default function ProfileScreen() {
                 ))}
               </View>
 
+              {/* Voice Intro & Music Identity */}
+              <Text style={[styles.sectionHeading, { marginTop: 24 }]}>VOICE INTRO & VIBE</Text>
+              <View style={{ marginBottom: 16 }}>
+                <VoiceIntroRecorder
+                  existingDuration={voiceIntro?.durationSeconds}
+                  onSave={async (audioData, mimeType, durationSeconds) => {
+                    const saved = await musicService.uploadVoiceIntro({
+                      audioData,
+                      mimeType,
+                      durationSeconds,
+                    });
+                    setVoiceIntro(saved);
+                  }}
+                  onDelete={async () => {
+                    await musicService.deleteVoiceIntro();
+                    setVoiceIntro(null);
+                  }}
+                />
+              </View>
+
+              <View style={styles.musicHubBanner}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.musicHubBannerTitle}>🎧 Music Profile</Text>
+                  <Text style={styles.musicHubBannerSub}>
+                    Connect Spotify, set your song of the day, create music notes & show playlists
+                  </Text>
+                </View>
+                <Pressable
+                  style={styles.openMusicHubBtn}
+                  onPress={() => router.push('/(app)/music' as any)}
+                >
+                  <Text style={styles.openMusicHubText}>Open</Text>
+                  <Ionicons name="arrow-forward" size={14} color="white" />
+                </Pressable>
+              </View>
+
               {/* Save Button */}
               <Button
                 title={isSaving ? 'Saving Changes...' : 'Save Profile'}
@@ -493,6 +569,18 @@ export default function ProfileScreen() {
                     📍 {city} • {occupation || 'Mingle Traveler'}
                   </Text>
                   {bio ? <Text style={styles.previewBio}>{bio}</Text> : null}
+
+                  {/* Vibe Section Preview */}
+                  <View style={{ marginTop: 12, marginBottom: 8 }}>
+                    <MusicVibeSection
+                      userId={user.id}
+                      voiceIntro={voiceIntro}
+                      currentListening={musicProfile?.currentListening || null}
+                      topArtists={musicProfile?.topArtists || null}
+                      isOwner={true}
+                      onManageMusic={() => router.push('/(app)/music' as any)}
+                    />
+                  </View>
 
                   {prompts.map((pr) => (
                     <View key={pr.id} style={styles.previewPromptBox}>
@@ -538,6 +626,112 @@ export default function ProfileScreen() {
                     <View
                       style={[styles.toggleThumb, privacy.incognito && styles.toggleThumbActive]}
                     />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Music & Voice Privacy */}
+              <Text style={[styles.sectionHeading, { marginTop: 24 }]}>MUSIC & VOICE PRIVACY</Text>
+              <View style={styles.settingsGroup}>
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Currently Playing</Text>
+                    <Text style={styles.settingDesc}>Display what you are listening to</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showCurrentlyPlaying: !musicPrivacy.showCurrentlyPlaying };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showCurrentlyPlaying && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showCurrentlyPlaying && styles.toggleThumbActive]} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Top Artists</Text>
+                    <Text style={styles.settingDesc}>Display your favorite artists on profile</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showTopArtists: !musicPrivacy.showTopArtists };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showTopArtists && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showTopArtists && styles.toggleThumbActive]} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Top Tracks</Text>
+                    <Text style={styles.settingDesc}>Display your top Spotify tracks</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showTopTracks: !musicPrivacy.showTopTracks };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showTopTracks && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showTopTracks && styles.toggleThumbActive]} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Playlists</Text>
+                    <Text style={styles.settingDesc}>Display chosen public playlists</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showPlaylists: !musicPrivacy.showPlaylists };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showPlaylists && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showPlaylists && styles.toggleThumbActive]} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Music Chemistry</Text>
+                    <Text style={styles.settingDesc}>Calculate % overlap with matches</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showMusicChemistry: !musicPrivacy.showMusicChemistry };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showMusicChemistry && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showMusicChemistry && styles.toggleThumbActive]} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.settingTitle}>Show Voice Intro</Text>
+                    <Text style={styles.settingDesc}>Allow people to hear your vibe</Text>
+                  </View>
+                  <Pressable
+                    onPress={async () => {
+                      const updated = { ...musicPrivacy, showVoiceIntro: !musicPrivacy.showVoiceIntro };
+                      setMusicPrivacy(updated);
+                      await musicService.updatePrivacy(updated);
+                    }}
+                    style={[styles.toggleSwitch, musicPrivacy.showVoiceIntro && styles.toggleSwitchActive]}
+                  >
+                    <View style={[styles.toggleThumb, musicPrivacy.showVoiceIntro && styles.toggleThumbActive]} />
                   </Pressable>
                 </View>
               </View>
@@ -1157,5 +1351,41 @@ const styles = StyleSheet.create({
     padding: 12,
     color: 'white',
     fontSize: 14,
+  },
+  musicHubBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(108,99,255,0.08)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(108,99,255,0.18)',
+    gap: 12,
+    marginBottom: 8,
+  },
+  musicHubBannerTitle: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  musicHubBannerSub: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  openMusicHubBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#6C63FF',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  openMusicHubText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

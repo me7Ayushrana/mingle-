@@ -421,6 +421,16 @@ export default function MatchingScreen() {
                         </Text>
                       ) : null}
 
+                      {/* Music & Voice Vibe Button */}
+                      <Pressable
+                        onPress={() => router.push(`/music/${currentProfile.id}` as any)}
+                        style={styles.exploreMusicCardBtn}
+                      >
+                        <Ionicons name="musical-notes" size={15} color="#1DB954" />
+                        <Text style={styles.exploreMusicCardText}>Explore Music & Vibe</Text>
+                        <Ionicons name="chevron-forward" size={13} color="rgba(255,255,255,0.4)" />
+                      </Pressable>
+
                       {/* Prompts Drawer if Expanded */}
                       {showDetails && (
                         <ScrollView style={styles.expandedDrawer} showsVerticalScrollIndicator={false}>
@@ -1319,6 +1329,24 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: 'white',
+    fontWeight: '700',
+  },
+  exploreMusicCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(29,185,84,0.12)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(29,185,84,0.25)',
+  },
+  exploreMusicCardText: {
+    color: '#1DB954',
+    fontSize: 12,
     fontWeight: '700',
   },
 });

@@ -24,6 +24,10 @@ import onboardingRoutes from './routes/onboarding.routes';
 import voiceRoutes from './routes/voice.routes';
 import discoveryRoutes from './routes/discovery.routes';
 import matchesRoutes from './routes/matches.routes';
+import spotifyRoutes from './routes/spotify.routes';
+import musicRoutes from './routes/music.routes';
+import sharedPlaylistRoutes from './routes/sharedPlaylist.routes';
+import musicMessagesRoutes from './routes/musicMessages.routes';
 
 const app = express();
 
@@ -75,6 +79,18 @@ app.use('/api/onboarding', onboardingRoutes);
 
 app.use('/voice', voiceRoutes);
 app.use('/api/voice', voiceRoutes);
+
+app.use('/spotify', spotifyRoutes);
+app.use('/api/spotify', spotifyRoutes);
+
+app.use('/music', musicRoutes);
+app.use('/api/music', musicRoutes);
+
+app.use('/playlists', sharedPlaylistRoutes);
+app.use('/api/playlists', sharedPlaylistRoutes);
+
+app.use('/chats', musicMessagesRoutes);
+app.use('/api/chats', musicMessagesRoutes);
 
 // ---------------------------------------------------------------------------
 // Error handling
